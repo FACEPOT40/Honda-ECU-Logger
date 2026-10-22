@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+build/
+dist/
+*.spec
+
+# Ride logs and ECU / third-party files: never commit
+logs/
+m0_log_*.csv
+*.bin
+*.xdf
+*.dat
+*.exe
