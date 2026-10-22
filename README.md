@@ -1,4 +1,4 @@
-# Honda ECU Logger
+# Honda-ECU-Logger
 
 Record live ECU data from Honda/Keihin K-line motorcycles while you ride, then review the logs as graphs afterwards to check your road-tuning results.
 
@@ -20,7 +20,7 @@ You can't look at a screen while riding. So: connect, press **Start Record**, ri
 - **Ride viewer** (*Open CSV*): tick the values you want, and each one gets its own graph on a shared time axis
   - Presets: Overview / Fuel / Ignition / Health / Everything
   - **One graph at a time** with ◀ ▶ (or Page Up / Page Down) to flip through values
-  - Move the mouse over any graph to read **every value at that moment**
+  - Move the mouse over any graph to read **every value at that moment**, shown on each graph next to the cursor and in the side panel
   - min / avg / max for the time range in view; click a marker to jump to it
   - Mouse wheel zooms time; your last selection is remembered
   - Drop a CSV onto the .exe, or run `python viewer.py ride.csv`, to open it directly
