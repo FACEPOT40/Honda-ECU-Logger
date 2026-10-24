@@ -33,7 +33,7 @@ You can't look at a screen while riding. So: connect, press **Start Record**, ri
 | Cable | FTDI FT232R USB-to-K-line, on the red 4-pin DLC |
 | Driver | Official FTDI VCP driver (shows as a COM port) |
 
-The table 0x17 layout follows the RE-ECU-th PGM-FI live data sheet and was checked against real Wave logs: RPM, TPS, engine temp, battery and ignition are confirmed. ⚠️ Injector scale, speed and STFT are **not yet verified** on a ride. Raw bytes are always saved (`raw_17`, `raw_20`) so values can be recomputed later.
+The table 0x17 layout follows the RE-ECU-th PGM-FI live data sheet and was checked against real Wave logs: RPM, TPS (full throttle reads 93.75 %, the ECU's own scale), engine temp, battery and ignition are confirmed. ⚠️ Injector scale, speed and STFT are **not yet verified** on a ride. Raw bytes are always saved (`raw_17`, `raw_20`) so values can be recomputed later.
 
 ## Install & run (Windows)
 1. Install **Python 3.12** from python.org (tick *Add Python to PATH*).

@@ -45,11 +45,12 @@ may look unusual.
   Link works (echo on, ~20 reads/s per table). Table 0x17 layout now follows the RE-ECU-th
   sheet, checked byte by byte against those logs; full map in the `decode.py` docstring.
   The old HondaECU layout (with its 0xFF insertion) was wrong for inj/speed on the Wave.
-  Confirmed: RPM, TPS V, ECT (d5, the Wave's only temp sensor; EOT d9 = 0xFF), battery,
-  ignition (matches Pai's ignition map within ~1.5°), injector position d11-12.
+  Confirmed: RPM, TPS V, TPS % (/1.6: raw 150 at full throttle = 93.75 %), ECT (d5, the
+  Wave's only temp sensor; EOT d9 = 0xFF), battery, ignition (matches Pai's ignition map
+  within ~1.5°), injector position d11-12. The app itself has recorded on the real bike.
   Still open:
-  - `INJ_DIVISOR` (200 from sheet vs ~246.8 HondaECU)
-  - TPS % scale: /1.6 (fits tune's 100.6 % axis) vs sheet's *0.5. Check raw d3 at full throttle (~160 = /1.6)
+  - `INJ_DIVISOR` (200 from sheet vs ~246.8 HondaECU). Needs a warm idle (fast idle off)
+    compared against the tune's fuel map; cold logs include start enrichment
   - speed = d15 (0 while standing; verify on a ride)
   - STFT /128: only seen at 128 (cold engine, open loop); verify warm
 - Table 0xD1 (side stand / neutral, fuel pump, fan) is readable with the existing `71` query;

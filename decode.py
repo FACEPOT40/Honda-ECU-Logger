@@ -8,8 +8,9 @@ d = payload after "71 <table>"; the sheet numbers the same bytes D9, D10, ...
 Table 0x17 (19 bytes on the Wave):
   d0-1  RPM (16-bit)            confirmed (idle ~1000, revs to 5400)
   d2    TPS volts  *5/256       confirmed
-  d3    TPS %      /1.6         sheet says *0.5; /1.6 fits the tune's 100.6 % axis.
-                                Unverified: check raw ~160 at full throttle
+  d3    TPS %      /1.6         confirmed: raw 150 at full throttle = 93.75 %, the ECU's own
+                                scale (same as HondaECU). The sheet's *0.5 would read 75 %,
+                                and /1.6 lines up better with the tune's ignition map columns
   d4    ECT volts  *5/256
   d5    ECT °C     -40          confirmed. On the air-cooled Wave this is the
                                 engine (oil) temp sensor
