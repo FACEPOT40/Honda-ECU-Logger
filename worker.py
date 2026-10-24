@@ -8,6 +8,9 @@ from PySide6.QtCore import QThread, Signal
 from decode import DECODERS
 from kline import INIT_MSG, INIT_OK, WAKE_MSG, KLine, SimECU, payload, query_msg
 
+# tables that change slowly are asked only every Nth cycle, so the main values stay fast
+EVERY = {0xD1: 5}   # neutral / in gear
+
 ECU_NAMES = {
     "01 02 58 0d 01": "38770-K73-T32",
     "01 03 3e 0d 01": "38770-K73-T61",
@@ -64,11 +67,14 @@ class PollWorker(QThread):
             self.status.emit(connected)
 
             tables = list(DECODERS)
-            misses = 0
+            last = {}   # latest values of the slow tables, repeated in every sample
+            cycle = misses = 0
             while self._run and misses < 5:
                 s = {"t": time.time()}
                 got = False
                 for t in list(tables):
+                    if cycle % EVERY.get(t, 1):
+                        continue
                     r = link.send(query_msg(t))
                     if not r:
                         continue
@@ -79,8 +85,15 @@ class PollWorker(QThread):
                         tables.remove(t)
                         self.status.emit(f"{connected}, table 0x{t:02X} not supported by this ECU")
                         continue
-                    s.update(DECODERS[t](d))
-                    s[f"raw_{t:02x}"] = d.hex()
+                    vals = DECODERS[t](d)
+                    vals[f"raw_{t:02x}"] = d.hex()
+                    if t in EVERY:
+                        last[t] = vals
+                    else:
+                        s.update(vals)
+                for vals in last.values():
+                    s.update(vals)
+                cycle += 1
                 if got:
                     misses = 0
                     self.sample.emit(s)

@@ -149,6 +149,9 @@ class SimECU:
         elif table == 0x20:
             o2 = random.randint(20, 230) if cyc < 0.6 else random.randint(180, 230)
             data = bytes([o2, 128 + random.randint(-6, 6), 0])
+        elif table == 0xD1:
+            # neutral while the throttle is (nearly) closed, else in gear; fuel pump on
+            data = bytes([0x01 if cyc < 0.15 else 0x00, 0, 0, 0, 0x01, 0x10])
         else:
             data = b""   # like a real ECU: "02 05 71 tt cs" = no such table
         body = bytes([0x02, len(data) + 5, 0x71, table]) + data

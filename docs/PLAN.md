@@ -166,7 +166,7 @@ Honda-ECU-Logger/
 | **M3** | Open CSV viewer + build .exe | Real use | ◐ Viewer built, .exe not built |
 | Later | Android version (WebUSB in Chrome) | Buy a USB OTG adapter | ☐ |
 
-Legend: ☐ not done · ◐ partly done · ☑ done. The first real-bike test (24 Oct 2026) worked: wake-up, init and ECM ID all OK, ~20 reads/s per table. RPM, TPS (full throttle = 93.75 %), engine temp, battery and ignition are confirmed. The Wave has no speed sensor (cable speedometer), so speed was dropped. STFT and injector scale need a fully warm engine.
+Legend: ☐ not done · ◐ partly done · ☑ done. The first real-bike test (24 Oct 2026) worked: wake-up, init and ECM ID all OK, ~20 reads/s per table. RPM, TPS (full throttle = 93.75 %), engine temp, battery and ignition are confirmed. The Wave has no speed sensor (cable speedometer), so Speed reads 0 (kept for other Honda bikes). A Gear value (N / in gear) comes from table 0xD1. STFT and injector scale need a fully warm engine.
 
 ### What M0 must confirm
 1. The ECU can be woken through the FTDI driver (COM) using a serial break

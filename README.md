@@ -11,8 +11,9 @@ You can't look at a screen while riding. So: connect, press **Start Record**, ri
 ![screenshot](docs/screenshot.png)
 
 ## Features
-- Live values: RPM, TPS, engine temp (ECT), battery, injector time, ignition advance, O2 voltage, STFT, fast idle
-  (no speed: the Wave's speedometer is cable-driven, so the ECU never knows the speed)
+- Live values: RPM, TPS, engine temp (ECT), battery, speed, injector time, ignition advance, O2 voltage, STFT, fast idle, gear (N / in gear)
+  - Speed only works on Honda bikes with an ECU speed sensor; on the Wave (cable speedometer) it always reads 0
+  - The ECU only knows neutral or in gear, not which gear
 - Real-time graphs (10 / 30 / 60 s window) with wall-clock time axis
 - **Start / Stop Record** to CSV with wall-clock timestamps (ms); `elapsed_s` also saved (hidden on screen by default, *View → Show elapsed time*)
 - **Marker** button / `M` key: marks an event (e.g. "heard knock") in the CSV and on the graphs
@@ -58,7 +59,9 @@ build_exe.bat
 Output: `dist\HondaECULogger.exe`
 
 ## CSV columns
-`timestamp, elapsed_s, rpm, tps_pct, ect_c, batt_v, inj_ms, ign_deg, o2_v, stft, fast_idle, marker, raw_17, raw_20`
+`timestamp, elapsed_s, rpm, tps_pct, ect_c, batt_v, speed_kmh, inj_ms, ign_deg, o2_v, stft, fast_idle, neutral, marker, raw_17, raw_20, raw_d1`
+
+`fast_idle` and `neutral` are 1/0 (1 = fast idle on / in neutral).
 
 ## Protocol test tool
 `tools/m0_probe.py` is a console script that wakes the ECU, reads the ECM ID and prints raw table bytes. Use it to verify a new bike/ECU:

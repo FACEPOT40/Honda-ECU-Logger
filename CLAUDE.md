@@ -14,8 +14,10 @@ changes briefly and plainly). License GPL-3.0. Full background: `docs/PLAN.md`.
 
 ## Files
 - `kline.py`: serial link (10400 8N1, break-based wake, echo detection, checksum), `SimECU`
-- `decode.py`: `FIELDS`, `decode_17`, `decode_20`, `DECODERS`, `alerts` (byte map in docstring)
-- `worker.py`: `PollWorker` QThread (connect, ECM ID, poll 0x17 + 0x20, auto-reconnect)
+- `decode.py`: `FIELDS`, `decode_17`, `decode_20`, `decode_d1`, `DECODERS`, `TEXT`/`fmt_value`,
+  `alerts` (byte map in docstring)
+- `worker.py`: `PollWorker` QThread (connect, ECM ID, poll 0x17 + 0x20 every cycle and 0xD1
+  every 5th (`EVERY`), auto-reconnect)
 - `recorder.py`: CSV writer (wall-clock `timestamp` primary, `elapsed_s`, marker, raw bytes)
 - `app.py`: main window (live values, 4 dual-axis graphs, record, marker `M`)
 - `viewer.py`: ride viewer (tick values, one graph per value, presets, one-at-a-time, cursor readout)
@@ -54,9 +56,12 @@ may look unusual.
   - STFT /128: only seen at 128 (cold engine, open loop); verify warm. ECU-SHOP's
     "TRIM -10.1" is probably the same byte as a %: (raw-128)/128*100, raw 115 = -10.2 %
 - **No speed** on this bike: cable-driven speedometer, no ECU sensor. d15 stayed 0 on a ride
-  and in a wheel-spinning scan; the mechanic confirmed ECU-SHOP's speed is phone GPS. Speed
-  was removed from FIELDS / CSV (24 Oct). Idea for later: merge a phone GPS track by timestamp.
+  and in a wheel-spinning scan; the mechanic confirmed ECU-SHOP's speed is phone GPS. Pai
+  wants Speed **kept** in the app anyway (shows 0 on the Wave) for other Honda bikes.
+  Idea for later: merge a phone GPS track by timestamp.
 - `m0_probe.py --scan` (24 Oct): the Wave supports only 0x17, 0x20, 0x67 (mirror of 0x17),
   0x70 (mirror of 0x20) and 0xD1 (6 bytes: d0 neutral 01 / in gear 00, d4 fuel pump 01 = on,
-  d5 fan = 0x10, meaningless, no fan). 0xD1 is not polled yet; polling it every few cycles
-  would add a neutral/gear column without slowing the main tables much.
+  d5 fan = 0x10, meaningless, no fan). The ECU only knows neutral / in gear, not which gear.
+- **Gear (neutral) value** added 24 Oct from 0xD1 d0: `worker.EVERY` polls 0xD1 only every 5th
+  cycle and repeats its last value in each sample. On/off values (`neutral`, `fast_idle`) are
+  stored as 1/0 and shown as words via `decode.TEXT` / `fmt_value`. Not yet seen live on the bike.

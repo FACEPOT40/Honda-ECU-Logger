@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
                                QGridLayout, QHBoxLayout, QLabel, QMainWindow,
                                QMessageBox, QPushButton, QVBoxLayout, QWidget)
 
-from decode import FIELDS, alerts
+from decode import FIELDS, alerts, fmt_value
 from kline import list_ports
 from recorder import Recorder
 from viewer import LogViewer
@@ -31,7 +31,6 @@ GRAPHS = [
 ]
 COLORS = ("#4fc3f7", "#ffb74d")
 LABELS = {k: (lbl, unit) for k, lbl, unit, _ in FIELDS}
-DECIMALS = {k: dec for k, _, _, dec in FIELDS}
 BUFFER = 6000  # samples kept in memory for the live graphs
 
 
@@ -244,7 +243,7 @@ class MainWindow(QMainWindow):
         for k, *_ in FIELDS:
             v = s.get(k)
             lbl = self.value_lbl[k]
-            lbl.setText("-" if v is None else f"{v:,.{DECIMALS[k]}f}")
+            lbl.setText(fmt_value(k, v))
             lbl.setStyleSheet("color:#e53935" if k in bad else "")
         self.rec.write(s)
 

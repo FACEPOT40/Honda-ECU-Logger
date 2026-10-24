@@ -6,9 +6,10 @@ import os
 import sys
 import tempfile
 
-VALUES = ["rpm", "tps_pct", "ect_c", "batt_v", "inj_ms", "ign_deg",
-          "o2_v", "stft", "fast_idle"]
-COLUMNS = ["timestamp", "elapsed_s"] + VALUES + ["marker", "raw_17", "raw_20"]
+VALUES = ["rpm", "tps_pct", "ect_c", "batt_v", "speed_kmh", "inj_ms", "ign_deg",
+          "o2_v", "stft", "fast_idle", "neutral"]
+RAW = ["raw_17", "raw_20", "raw_d1"]
+COLUMNS = ["timestamp", "elapsed_s"] + VALUES + ["marker"] + RAW
 
 
 def app_dir():
@@ -73,7 +74,7 @@ class Recorder:
         for k in VALUES:
             v = s.get(k)
             row.append("" if v is None else v)
-        row += [self.pending_marker, s.get("raw_17", ""), s.get("raw_20", "")]
+        row += [self.pending_marker] + [s.get(k, "") for k in RAW]
         self.pending_marker = ""
         self.w.writerow(row)
 

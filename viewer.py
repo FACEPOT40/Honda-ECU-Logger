@@ -18,16 +18,16 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
                                QListWidgetItem, QMainWindow, QMessageBox,
                                QPushButton, QSplitter, QVBoxLayout, QWidget)
 
-from decode import FIELDS
+from decode import FIELDS, fmt_value
 from recorder import default_log_dir
 
 KEYS = [f[0] for f in FIELDS]
 INFO = {k: (lbl, unit, dec) for k, lbl, unit, dec in FIELDS}
 COLORS = {
     "rpm": "#4fc3f7", "tps_pct": "#ffb74d", "ect_c": "#ef5350",
-    "batt_v": "#9ccc65", "inj_ms": "#4db6ac",
+    "batt_v": "#9ccc65", "speed_kmh": "#ba68c8", "inj_ms": "#4db6ac",
     "ign_deg": "#fff176", "o2_v": "#f06292", "stft": "#e0e0e0",
-    "fast_idle": "#90a4ae",
+    "fast_idle": "#90a4ae", "neutral": "#a1887f",
 }
 PRESETS = {
     "Overview (RPM, TPS, ignition)": ["rpm", "tps_pct", "ign_deg"],
@@ -370,7 +370,7 @@ class LogViewer(QMainWindow):
         for k in KEYS:
             if k in self.data:
                 val = self.data[k][i]
-                self.val_lbl[k].setText("-" if np.isnan(val) else f"{val:,.{INFO[k][2]}f}")
+                self.val_lbl[k].setText(fmt_value(k, None if np.isnan(val) else val))
         self.place_tags(i, stamp)
 
     def place_tags(self, i, stamp):
@@ -381,8 +381,7 @@ class LogViewer(QMainWindow):
                 dot.setVisible(False)
                 text.setVisible(False)
                 continue
-            _, unit, dec = INFO[k]
-            s = f"{val:,.{dec}f} {unit}".strip()
+            s = f"{fmt_value(k, val)} {INFO[k][1]}".strip()
             if row == 0:
                 s = f"{stamp}\n{s}"
             (x0, x1), (y0, y1) = self.plots[k].vb.viewRange()
