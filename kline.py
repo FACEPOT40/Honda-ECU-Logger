@@ -150,6 +150,6 @@ class SimECU:
             o2 = random.randint(20, 230) if cyc < 0.6 else random.randint(180, 230)
             data = bytes([o2, 128 + random.randint(-6, 6), 0])
         else:
-            return None
+            data = b""   # like a real ECU: "02 05 71 tt cs" = no such table
         body = bytes([0x02, len(data) + 5, 0x71, table]) + data
         return body + bytes([checksum(body)])

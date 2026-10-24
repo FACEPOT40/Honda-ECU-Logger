@@ -15,6 +15,7 @@ Usage:
   pip install pyserial
   python m0_probe.py --list                      # show COM ports
   python m0_probe.py --port COM3 --seconds 30    # probe the bike
+  python m0_probe.py --port COM3 --scan          # which tables exist, which bytes move
   python m0_probe.py --sim --seconds 5           # test without the bike
 """
 
@@ -58,6 +59,9 @@ def query_msg(table: int) -> bytes:
 
 
 ALLOWED_PREFIXES = (WAKE_MSG, INIT_MSG, bytes([0x72, 0x05, 0x71]))
+
+# live-data tables listed on the RE-ECU-th PGM-FI sheet (all read with the same 71 query)
+SCAN_TABLES = [0x10, 0x11, 0x13, 0x17, 0x20, 0x21, 0x60, 0x61, 0x63, 0x67, 0x70, 0x71, 0xD1]
 
 
 class KLine:
@@ -125,6 +129,21 @@ class KLine:
         return msg if ok else None
 
 
+# ----------------------------------------------------------------- summary --
+
+def print_changes(seen):
+    """Per table: the bytes that changed during polling (d0 = first byte after '71 tt')."""
+    print("\nBytes that changed (min..max, number of different values):")
+    for t, payloads in seen.items():
+        n = min(len(d) for d in payloads)
+        moved = []
+        for i in range(n):
+            vals = [d[i] for d in payloads]
+            if min(vals) != max(vals):
+                moved.append(f"d{i}={min(vals)}..{max(vals)} ({len(set(vals))})")
+        print(f"  0x{t:02X} ({len(payloads)} replies): " + (", ".join(moved) or "nothing changed"))
+
+
 # -------------------------------------------------------------------- main --
 
 def main():
@@ -134,6 +153,9 @@ def main():
     ap.add_argument("--seconds", type=float, default=20, help="how long to poll")
     ap.add_argument("--tables", default="17,20", help="hex table numbers, e.g. 17,20")
     ap.add_argument("--out", default=None, help="CSV output file")
+    ap.add_argument("--scan", action="store_true",
+                    help="ask every known table once, then poll the supported ones and "
+                         "list the bytes that changed (ignores --tables)")
     ap.add_argument("--sim", action="store_true", help="simulated ECU (no bike)")
     ap.add_argument("-v", "--verbose", action="store_true", help="show raw TX/RX")
     args = ap.parse_args()
@@ -180,7 +202,28 @@ def main():
         print("ECM ID reply:", r.hex(" ") if r else "none",
               "| ID:", payload(r, 0x00)[:5].hex(" ") if r else "-")
 
+        # 2b) scan: find out which tables this ECU has
+        if args.scan:
+            tables = []
+            print("\nScanning tables:")
+            for t in SCAN_TABLES:
+                r = ecu.send(query_msg(t))
+                d = payload(r, t) if r else None
+                if r is None:
+                    print(f"  0x{t:02X}  no reply")
+                elif not d:
+                    print(f"  0x{t:02X}  not supported")
+                else:
+                    print(f"  0x{t:02X}  {len(d):2} bytes  {d.hex(' ')}")
+                    tables.append(t)
+            if not tables:
+                print("No live-data tables answered.")
+                return
+            print(f"\nPolling {', '.join(f'0x{t:02X}' for t in tables)} for "
+                  f"{args.seconds:.0f} s. Rev the engine / spin the wheel now...")
+
         # 3) poll tables
+        seen = {}   # table -> list of payloads, for the changed-bytes summary
         n, errors, t_start = 0, 0, time.time()
         with open(out, "w", newline="") as f:
             w = csv.writer(f)
@@ -200,13 +243,16 @@ def main():
                         continue
                     dec = DECODERS[t](d) if t in DECODERS else None
                     w.writerow([ts, f"0x{t:02X}", len(d), d.hex(" "), dec])
-                    print(f"{ts[11:]}  0x{t:02X} [{len(d):2}] {d.hex(' ')}")
-                    if dec:
-                        print("              ", dec)
+                    seen.setdefault(t, []).append(d)
+                    if not args.scan:   # a scan polls many tables; only the summary is printed
+                        print(f"{ts[11:]}  0x{t:02X} [{len(d):2}] {d.hex(' ')}")
+                        if dec:
+                            print("              ", dec)
                     n += 1
         dur = time.time() - t_start
         print(f"\nDone: {n} replies, {errors} errors in {dur:.1f}s "
               f"({n / dur:.1f} replies/s). Log saved to {out}")
+        print_changes(seen)
         print("Please send me this console output and the CSV file.")
     finally:
         ecu.close()
