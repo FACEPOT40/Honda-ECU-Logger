@@ -17,7 +17,7 @@ You can't look at a screen while riding. So: connect, press **Start Record**, ri
 - Real-time graphs (10 / 30 / 60 s window) with wall-clock time axis
 - **Start / Stop Record** to CSV with wall-clock timestamps (ms); `elapsed_s` also saved (hidden on screen by default, *View → Show elapsed time*)
 - **Marker** button / `M` key: marks an event (e.g. "heard knock") in the CSV and on the graphs
-- Red alerts: engine temp > 110 °C, battery < 12.5 V while running, O2 lean (< 0.45 V) at high throttle
+- Red alerts: engine temp ≥ 120 °C, battery < 12.5 V while running, O2 lean (< 0.45 V) at high throttle
 - **Simulator** mode to try the app without a bike
 - **Ride viewer** (*Open CSV*): tick the values you want, and each one gets its own graph on a shared time axis
   - Presets: Overview / Fuel / Ignition / Health / Everything
@@ -35,7 +35,7 @@ You can't look at a screen while riding. So: connect, press **Start Record**, ri
 | Cable | FTDI FT232R USB-to-K-line, on the red 4-pin DLC |
 | Driver | Official FTDI VCP driver (shows as a COM port) |
 
-The table 0x17 layout follows the RE-ECU-th PGM-FI live data sheet and was checked against real Wave logs: RPM, TPS (full throttle reads 93.75 %, the ECU's own scale), engine temp, battery and ignition are confirmed. ⚠️ Injector scale and STFT are **not yet verified** on a warm engine. Raw bytes are always saved (`raw_17`, `raw_20`) so values can be recomputed later.
+The table 0x17 layout follows the RE-ECU-th PGM-FI live data sheet and was checked against real Wave logs: RPM, TPS (full throttle reads 93.75 %, the ECU's own scale), engine temp, battery and ignition are confirmed. The injector scale (HondaECU's, about 4 µs per count) was checked against ECU-SHOP and the tune's fuel map. ⚠️ STFT never moves on the test bike (its tune probably runs without O2 feedback), so that formula is unverified. Raw bytes are always saved (`raw_17`, `raw_20`) so values can be recomputed later.
 
 ## Install & run (Windows)
 1. Install **Python 3.12** from python.org (tick *Add Python to PATH*).

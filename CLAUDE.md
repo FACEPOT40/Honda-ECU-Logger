@@ -50,18 +50,20 @@ may look unusual.
   Confirmed: RPM, TPS V, TPS % (/1.6: raw 150 at full throttle = 93.75 %), ECT (d5, the
   Wave's only temp sensor; EOT d9 = 0xFF), battery, ignition (matches Pai's ignition map
   within ~1.5°), injector position d11-12. The app itself has recorded on the real bike.
+  `INJ_DIVISOR` = 65535/265.5 (~246.8, HondaECU) since 25 Oct, not the sheet's 200: matches
+  ECU-SHOP (3.69 vs our 3.90 ms at 4,083 rpm / 8 %) and makes logged raw = fuel base map / 4
+  + ~54, i.e. the tune's map is in µs. WOT duty at 8,200 rpm ~74 %. CSVs recorded before
+  25 Oct store inj_ms with /200 (about 23 % too high); raw_17 has the true value. Pai chose
+  not to have the viewer recompute old logs.
   Still open:
-  - `INJ_DIVISOR` (200 from sheet vs ~246.8 HondaECU). Needs the tune's fuel map value at
-    ~1,200 rpm / 0 % TPS: hot ride (25 Oct, ECT 120+) idles at raw ~760 = 3.80 ms (/200) or
-    3.08 ms (/246.8). Matters: at WOT ~8,200 rpm duty is ~91 % (/200) vs ~74 % (/246.8)
   - STFT /128: stays 128 even on a hot 6-min ride (25 Oct), so closed loop is probably off
     in Pai's custom tune. ECU-SHOP's "TRIM -10.1" (Aug, likely older tune) is probably the
     same byte as a %: (raw-128)/128*100, raw 115 = -10.2 %
 - d14: the sheet's "fast idle" (0x80 = on) is 0x80 both cold and at 129 °C idle on the Wave,
   so it is logged as raw `mode_d14` ("Mode (d14)"), meaning unknown. Renamed 25 Oct; older
   CSVs have a `fast_idle` column instead.
-- Hot ride 25 Oct: ECT 117-129 °C all ride (stable, not climbing). `alerts` turns ECT red
-  above 110 °C, a guess; Pai is asking the mechanic what is normal for this sensor.
+- Hot ride 25 Oct: ECT 117-129 °C all ride (stable, not climbing). Mechanic: up to ~130-140 °C
+  for an air-cooled engine, "but that does not mean it's good". Pai chose red at >= 120 °C.
 - **No speed** on this bike: cable-driven speedometer, no ECU sensor. d15 stayed 0 on a ride
   and in a wheel-spinning scan; the mechanic confirmed ECU-SHOP's speed is phone GPS. Pai
   wants Speed **kept** in the app anyway (shows 0 on the Wave) for other Honda bikes.

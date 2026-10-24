@@ -19,7 +19,7 @@ Table 0x17 (19 bytes on the Wave):
   d9    EOT °C     -40          0xFF on the Wave (not fitted)
   d10   Battery V  *0.1         confirmed (11.7 key on, 8.8 cranking, 13-14 running)
   d11-12 Injector (16-bit) / INJ_DIVISOR ms   position confirmed (0 on decel
-                                fuel cut), divisor unverified
+                                fuel cut), scale chosen 25 Oct (see INJ_DIVISOR)
   d13   Ignition °BTDC -64+*0.5 confirmed against the ignition map
   d14   Mode (raw)              the sheet calls it fast idle (0x80 = on), but on the Wave
                                 it is 0x80 both cold (41 °C) and hot (129 °C idle), so its
@@ -36,9 +36,12 @@ switch states (sheet; the Wave has none); d4 fuel pump 01 = on; d5 fan (0x10 on 
 Wave, which has no fan). The ECU only knows neutral / in gear, not which gear.
 """
 
-# ms = raw16 / INJ_DIVISOR. 200 from the RE-ECU-th sheet; HondaECU uses
-# 65535/265.5 (~246.8). Unverified: idle reads ~4.5 ms with 200, ~3.6 ms with 246.8.
-INJ_DIVISOR = 200
+# ms = raw16 / INJ_DIVISOR: HondaECU's scale (~4.05 µs per count). Chosen over the
+# RE-ECU-th sheet's 200 on 25 Oct 2026 with two checks on the Wave:
+#  - ECU-SHOP showed 3.69 ms at 4083 rpm / 8 % TPS; our raw there gives 3.90 ms (/200: 4.82)
+#  - logged raw ~= fuel base map / 4 + ~54 at idle and WOT, i.e. the tune's map is in µs
+#    (+ ~0.2 ms injector dead time) with this scale; with /200 it would be 1.25 µs units
+INJ_DIVISOR = 65535 / 265.5
 
 FIELDS = [
     # key, label, unit, decimals
@@ -117,7 +120,7 @@ def alerts(s: dict) -> set:
     bad = set()
     ect, batt, rpm = s.get("ect_c"), s.get("batt_v"), s.get("rpm") or 0
     o2, tps = s.get("o2_v"), s.get("tps_pct") or 0
-    if ect is not None and ect > 110:
+    if ect is not None and ect >= 120:         # Pai's choice; mechanic: air-cooled max ~130-140
         bad.add("ect_c")
     if batt is not None and rpm > 1500 and batt < 12.5:
         bad.add("batt_v")
