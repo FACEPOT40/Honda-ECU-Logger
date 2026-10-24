@@ -21,7 +21,9 @@ Table 0x17 (19 bytes on the Wave):
   d11-12 Injector (16-bit) / INJ_DIVISOR ms   position confirmed (0 on decel
                                 fuel cut), divisor unverified
   d13   Ignition °BTDC -64+*0.5 confirmed against the ignition map
-  d14   Fast idle  0x80 = on    0x80 while cold (41 °C)
+  d14   Mode (raw)              the sheet calls it fast idle (0x80 = on), but on the Wave
+                                it is 0x80 both cold (41 °C) and hot (129 °C idle), so its
+                                meaning is unknown here. Logged raw for other Honda bikes
   d15   Speed km/h              only on bikes with an ECU speed sensor. Always 0 on the
                                 Wave: cable-driven speedometer, no sensor (0 on a ride and
                                 in a wheel-spinning scan; ECU-SHOP's speed is phone GPS).
@@ -49,14 +51,13 @@ FIELDS = [
     ("ign_deg", "Ign", "°", 1),
     ("o2_v", "O2", "V", 2),
     ("stft", "STFT", "", 3),
-    ("fast_idle", "Fast idle", "", 0),
+    ("mode_d14", "Mode (d14)", "", 0),
     ("neutral", "Gear", "", 0),
 ]
 DECIMALS = {k: dec for k, _, _, dec in FIELDS}
 
 # on/off values: shown as words, stored as 1/0 so they can be graphed
 TEXT = {
-    "fast_idle": {0: "Off", 1: "On"},
     "neutral": {0: "Gear", 1: "N"},
 }
 
@@ -87,7 +88,7 @@ def decode_17(d: bytes) -> dict:
         "batt_v": round(d[10] * 0.1, 1),
         "inj_ms": round((d[11] << 8 | d[12]) / INJ_DIVISOR, 2),
         "ign_deg": round(-64 + d[13] * 0.5, 1),
-        "fast_idle": 1 if d[14] >= 0x80 else 0,
+        "mode_d14": d[14],
         "speed_kmh": d[15],
     }
 

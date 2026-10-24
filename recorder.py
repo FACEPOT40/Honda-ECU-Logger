@@ -7,7 +7,7 @@ import sys
 import tempfile
 
 VALUES = ["rpm", "tps_pct", "ect_c", "batt_v", "speed_kmh", "inj_ms", "ign_deg",
-          "o2_v", "stft", "fast_idle", "neutral"]
+          "o2_v", "stft", "mode_d14", "neutral"]
 RAW = ["raw_17", "raw_20", "raw_d1"]
 COLUMNS = ["timestamp", "elapsed_s"] + VALUES + ["marker"] + RAW
 

@@ -27,7 +27,7 @@ COLORS = {
     "rpm": "#4fc3f7", "tps_pct": "#ffb74d", "ect_c": "#ef5350",
     "batt_v": "#9ccc65", "speed_kmh": "#ba68c8", "inj_ms": "#4db6ac",
     "ign_deg": "#fff176", "o2_v": "#f06292", "stft": "#e0e0e0",
-    "fast_idle": "#90a4ae", "neutral": "#a1887f",
+    "mode_d14": "#90a4ae", "neutral": "#a1887f",
 }
 PRESETS = {
     "Overview (RPM, TPS, ignition)": ["rpm", "tps_pct", "ign_deg"],

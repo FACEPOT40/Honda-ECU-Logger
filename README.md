@@ -11,7 +11,7 @@ You can't look at a screen while riding. So: connect, press **Start Record**, ri
 ![screenshot](docs/screenshot.png)
 
 ## Features
-- Live values: RPM, TPS, engine temp (ECT), battery, speed, injector time, ignition advance, O2 voltage, STFT, fast idle, gear (N / in gear)
+- Live values: RPM, TPS, engine temp (ECT), battery, speed, injector time, ignition advance, O2 voltage, STFT, gear (N / in gear), Mode (d14, raw)
   - Speed only works on Honda bikes with an ECU speed sensor; on the Wave (cable speedometer) it always reads 0
   - The ECU only knows neutral or in gear, not which gear
 - Real-time graphs (10 / 30 / 60 s window) with wall-clock time axis
@@ -59,9 +59,9 @@ build_exe.bat
 Output: `dist\HondaECULogger.exe`
 
 ## CSV columns
-`timestamp, elapsed_s, rpm, tps_pct, ect_c, batt_v, speed_kmh, inj_ms, ign_deg, o2_v, stft, fast_idle, neutral, marker, raw_17, raw_20, raw_d1`
+`timestamp, elapsed_s, rpm, tps_pct, ect_c, batt_v, speed_kmh, inj_ms, ign_deg, o2_v, stft, mode_d14, neutral, marker, raw_17, raw_20, raw_d1`
 
-`fast_idle` and `neutral` are 1/0 (1 = fast idle on / in neutral).
+`neutral` is 1/0 (1 = in neutral). `mode_d14` is the raw byte 14 of table 0x17: the PGM-FI sheet calls it fast idle, but on the Wave it is always 128 (0x80), so its meaning is unknown there.
 
 ## Protocol test tool
 `tools/m0_probe.py` is a console script that wakes the ECU, reads the ECM ID and prints raw table bytes. Use it to verify a new bike/ECU:

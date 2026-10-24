@@ -51,10 +51,17 @@ may look unusual.
   Wave's only temp sensor; EOT d9 = 0xFF), battery, ignition (matches Pai's ignition map
   within ~1.5°), injector position d11-12. The app itself has recorded on the real bike.
   Still open:
-  - `INJ_DIVISOR` (200 from sheet vs ~246.8 HondaECU). Needs a warm idle (fast idle off)
-    compared against the tune's fuel map; cold logs include start enrichment
-  - STFT /128: only seen at 128 (cold engine, open loop); verify warm. ECU-SHOP's
-    "TRIM -10.1" is probably the same byte as a %: (raw-128)/128*100, raw 115 = -10.2 %
+  - `INJ_DIVISOR` (200 from sheet vs ~246.8 HondaECU). Needs the tune's fuel map value at
+    ~1,200 rpm / 0 % TPS: hot ride (25 Oct, ECT 120+) idles at raw ~760 = 3.80 ms (/200) or
+    3.08 ms (/246.8). Matters: at WOT ~8,200 rpm duty is ~91 % (/200) vs ~74 % (/246.8)
+  - STFT /128: stays 128 even on a hot 6-min ride (25 Oct), so closed loop is probably off
+    in Pai's custom tune. ECU-SHOP's "TRIM -10.1" (Aug, likely older tune) is probably the
+    same byte as a %: (raw-128)/128*100, raw 115 = -10.2 %
+- d14: the sheet's "fast idle" (0x80 = on) is 0x80 both cold and at 129 °C idle on the Wave,
+  so it is logged as raw `mode_d14` ("Mode (d14)"), meaning unknown. Renamed 25 Oct; older
+  CSVs have a `fast_idle` column instead.
+- Hot ride 25 Oct: ECT 117-129 °C all ride (stable, not climbing). `alerts` turns ECT red
+  above 110 °C, a guess; Pai is asking the mechanic what is normal for this sensor.
 - **No speed** on this bike: cable-driven speedometer, no ECU sensor. d15 stayed 0 on a ride
   and in a wheel-spinning scan; the mechanic confirmed ECU-SHOP's speed is phone GPS. Pai
   wants Speed **kept** in the app anyway (shows 0 on the Wave) for other Honda bikes.
@@ -63,5 +70,6 @@ may look unusual.
   0x70 (mirror of 0x20) and 0xD1 (6 bytes: d0 neutral 01 / in gear 00, d4 fuel pump 01 = on,
   d5 fan = 0x10, meaningless, no fan). The ECU only knows neutral / in gear, not which gear.
 - **Gear (neutral) value** added 24 Oct from 0xD1 d0: `worker.EVERY` polls 0xD1 only every 5th
-  cycle and repeats its last value in each sample. On/off values (`neutral`, `fast_idle`) are
-  stored as 1/0 and shown as words via `decode.TEXT` / `fmt_value`. Not yet seen live on the bike.
+  cycle and repeats its last value in each sample. `neutral` is stored as 1/0 and shown as
+  N / Gear via `decode.TEXT` / `fmt_value`. Confirmed live on the 25 Oct ride. That ride
+  logged 11.6 samples/s (was ~14 before 0xD1); raise `EVERY` if more speed is wanted.
