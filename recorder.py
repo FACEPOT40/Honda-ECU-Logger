@@ -6,7 +6,7 @@ import os
 import sys
 import tempfile
 
-VALUES = ["rpm", "tps_pct", "ect_c", "batt_v", "speed_kmh", "inj_ms", "ign_deg",
+VALUES = ["rpm", "tps_pct", "ect_c", "batt_v", "inj_ms", "ign_deg",
           "o2_v", "stft", "fast_idle"]
 COLUMNS = ["timestamp", "elapsed_s"] + VALUES + ["marker", "raw_17", "raw_20"]
 

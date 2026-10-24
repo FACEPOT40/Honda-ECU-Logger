@@ -25,12 +25,12 @@ KEYS = [f[0] for f in FIELDS]
 INFO = {k: (lbl, unit, dec) for k, lbl, unit, dec in FIELDS}
 COLORS = {
     "rpm": "#4fc3f7", "tps_pct": "#ffb74d", "ect_c": "#ef5350",
-    "batt_v": "#9ccc65", "speed_kmh": "#ba68c8", "inj_ms": "#4db6ac",
+    "batt_v": "#9ccc65", "inj_ms": "#4db6ac",
     "ign_deg": "#fff176", "o2_v": "#f06292", "stft": "#e0e0e0",
     "fast_idle": "#90a4ae",
 }
 PRESETS = {
-    "Overview (RPM, TPS, speed)": ["rpm", "tps_pct", "speed_kmh"],
+    "Overview (RPM, TPS, ignition)": ["rpm", "tps_pct", "ign_deg"],
     "Fuel (O2, STFT, injector)": ["rpm", "tps_pct", "o2_v", "stft", "inj_ms"],
     "Ignition (advance)": ["rpm", "tps_pct", "ign_deg"],
     "Health (temp, battery)": ["rpm", "ect_c", "batt_v"],

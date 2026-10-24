@@ -22,7 +22,9 @@ Table 0x17 (19 bytes on the Wave):
                                 fuel cut), divisor unverified
   d13   Ignition °BTDC -64+*0.5 confirmed against the ignition map
   d14   Fast idle  0x80 = on    0x80 while cold (41 °C)
-  d15   Speed km/h              unverified (0 while standing)
+  d15   Speed km/h on bikes with an ECU speed sensor. Not decoded: the Wave has a
+                                cable-driven speedometer and no sensor (stayed 0 on a ride
+                                and in a wheel-spinning scan; ECU-SHOP's speed is phone GPS)
 
 Table 0x20: d0 O2 *5/256, d1 STFT /128 (128 = 1.00), d2 O2 heater *5/256.
 """
@@ -37,7 +39,6 @@ FIELDS = [
     ("tps_pct", "TPS", "%", 1),
     ("ect_c", "Eng temp", "°C", 0),
     ("batt_v", "Batt", "V", 1),
-    ("speed_kmh", "Speed", "km/h", 0),
     ("inj_ms", "Inj", "ms", 2),
     ("ign_deg", "Ign", "°", 1),
     ("o2_v", "O2", "V", 2),
@@ -64,7 +65,6 @@ def decode_17(d: bytes) -> dict:
         "inj_ms": round((d[11] << 8 | d[12]) / INJ_DIVISOR, 2),
         "ign_deg": round(-64 + d[13] * 0.5, 1),
         "fast_idle": 1 if d[14] >= 0x80 else 0,
-        "speed_kmh": d[15],
     }
 
 

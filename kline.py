@@ -145,7 +145,7 @@ class SimECU:
             data = struct.pack(">HBBBB4BBHBBB3B", rpm, 0x19 + int(cyc * 120), tps_raw,
                                0x75, ect + 40, 0xFF, 0xFF, 0xFF, 0xFF,
                                138 - random.randint(0, 5), inj, ign,
-                               0x80 if ect < 60 else 0, int(cyc * 110), 0, 0, 0)
+                               0x80 if ect < 60 else 0, 0, 0, 0, 0)   # d15 speed: none on the Wave
         elif table == 0x20:
             o2 = random.randint(20, 230) if cyc < 0.6 else random.randint(180, 230)
             data = bytes([o2, 128 + random.randint(-6, 6), 0])

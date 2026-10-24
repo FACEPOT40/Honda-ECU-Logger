@@ -44,14 +44,19 @@ may look unusual.
 - **M0 run on the real bike 24 Oct 2026** (key-on + engine-running logs, not committed).
   Link works (echo on, ~20 reads/s per table). Table 0x17 layout now follows the RE-ECU-th
   sheet, checked byte by byte against those logs; full map in the `decode.py` docstring.
-  The old HondaECU layout (with its 0xFF insertion) was wrong for inj/speed on the Wave.
+  The old HondaECU layout (with its 0xFF insertion) was wrong for the injector on the Wave.
   Confirmed: RPM, TPS V, TPS % (/1.6: raw 150 at full throttle = 93.75 %), ECT (d5, the
   Wave's only temp sensor; EOT d9 = 0xFF), battery, ignition (matches Pai's ignition map
   within ~1.5°), injector position d11-12. The app itself has recorded on the real bike.
   Still open:
   - `INJ_DIVISOR` (200 from sheet vs ~246.8 HondaECU). Needs a warm idle (fast idle off)
     compared against the tune's fuel map; cold logs include start enrichment
-  - speed = d15 (0 while standing; verify on a ride)
-  - STFT /128: only seen at 128 (cold engine, open loop); verify warm
-- Table 0xD1 (side stand / neutral, fuel pump, fan) is readable with the existing `71` query;
-  not polled yet (would cut the rate to ~14/s per table).
+  - STFT /128: only seen at 128 (cold engine, open loop); verify warm. ECU-SHOP's
+    "TRIM -10.1" is probably the same byte as a %: (raw-128)/128*100, raw 115 = -10.2 %
+- **No speed** on this bike: cable-driven speedometer, no ECU sensor. d15 stayed 0 on a ride
+  and in a wheel-spinning scan; the mechanic confirmed ECU-SHOP's speed is phone GPS. Speed
+  was removed from FIELDS / CSV (24 Oct). Idea for later: merge a phone GPS track by timestamp.
+- `m0_probe.py --scan` (24 Oct): the Wave supports only 0x17, 0x20, 0x67 (mirror of 0x17),
+  0x70 (mirror of 0x20) and 0xD1 (6 bytes: d0 neutral 01 / in gear 00, d4 fuel pump 01 = on,
+  d5 fan = 0x10, meaningless, no fan). 0xD1 is not polled yet; polling it every few cycles
+  would add a neutral/gear column without slowing the main tables much.
