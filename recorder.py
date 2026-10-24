@@ -6,9 +6,9 @@ import os
 import sys
 import tempfile
 
-COLUMNS = ["timestamp", "elapsed_s", "rpm", "tps_pct", "ect_c", "batt_v",
-           "speed_kmh", "inj_ms", "ign_deg", "o2_v", "stft", "marker",
-           "raw_17", "raw_20"]
+VALUES = ["rpm", "tps_pct", "ect_c", "batt_v", "speed_kmh", "inj_ms", "ign_deg",
+          "o2_v", "stft", "fast_idle"]
+COLUMNS = ["timestamp", "elapsed_s"] + VALUES + ["marker", "raw_17", "raw_20"]
 
 
 def app_dir():
@@ -70,7 +70,7 @@ class Recorder:
             self.t0 = s["t"]
         ts = dt.datetime.fromtimestamp(s["t"]).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
         row = [ts, f"{s['t'] - self.t0:.3f}"]
-        for k in COLUMNS[2:11]:
+        for k in VALUES:
             v = s.get(k)
             row.append("" if v is None else v)
         row += [self.pending_marker, s.get("raw_17", ""), s.get("raw_20", "")]

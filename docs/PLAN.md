@@ -91,7 +91,15 @@ References: [AutotronicCommunity/Honda_Keihin_KLine_Protocol](https://github.com
 
 ---
 
-## 5. Value decoding (from HondaECU `data.py`)
+## 5. Value decoding
+
+> **Update 24 Oct 2026:** after the real-bike M0 test, the app now uses the layout from the
+> RE-ECU-th "Protokol Live Data PGM-FI Honda Bike" sheet, checked byte by byte against the
+> Wave logs. The tables below are the **original HondaECU plan**, kept for history. Its 0xFF
+> insertion put injector and speed in the wrong place on the Wave. The current byte map and
+> what is confirmed or still open is in the `decode.py` docstring.
+
+### Original plan (from HondaECU `data.py`)
 
 ### Table 0x17 (main values)
 | Value | Formula | Notes |
@@ -152,13 +160,13 @@ Honda-ECU-Logger/
 
 | Step | What | User action | Status |
 |---|---|---|---|
-| **M0** | Protocol test script (no UI): wake ECU → read 0x17/0x20 → print raw + decoded values | ⭐ Test on the real bike (key on / engine running) and send the output | ☐ Not tested on the bike (simulator only) |
+| **M0** | Protocol test script (no UI): wake ECU → read 0x17/0x20 → print raw + decoded values | ⭐ Test on the real bike (key on / engine running) and send the output | ◐ Done 24 Oct (link OK, layout fixed); speed, STFT, injector scale and TPS % still to verify on a ride |
 | **M1** | UI + numbers + graphs + simulator mode | Check the look (no bike needed) | ◐ Built, simulator-tested |
 | **M2** | Start/Stop Record, CSV, Marker, alerts | Record a test ride | ◐ Built, Start Record bug |
 | **M3** | Open CSV viewer + build .exe | Real use | ◐ Viewer built, .exe not built |
 | Later | Android version (WebUSB in Chrome) | Buy a USB OTG adapter | ☐ |
 
-Legend: ☐ not done · ◐ partly done · ☑ done. The cable, driver and ECU are known to work (HondaECU read and flash succeeded), but this app's code has never talked to the real ECU yet, so **no decoded value can be trusted until M0 passes**.
+Legend: ☐ not done · ◐ partly done · ☑ done. The first real-bike test (24 Oct 2026) worked: wake-up, init and ECM ID all OK, ~20 reads/s per table. RPM, TPS, engine temp, battery and ignition are confirmed. Speed, STFT, injector scale and TPS % need a ride or a full-throttle check.
 
 ### What M0 must confirm
 1. The ECU can be woken through the FTDI driver (COM) using a serial break

@@ -1,57 +1,83 @@
 """Raw table bytes -> real units.
 
-Formulas follow HondaECU (src/frames/data.py). The table 0x17 field layout is
-NOT yet verified on the Wave 125i; raw bytes are always logged so values can be
-recomputed later if a position or formula turns out to be wrong.
+Layout and formulas follow the RE-ECU-th "Protokol Live Data PGM-FI Honda Bike"
+sheet, checked against real Wave 125i (K73-T61) logs on 24 Oct 2026.
+d = payload after "71 <table>"; the sheet numbers the same bytes D9, D10, ...
+(d[0] = D9). Raw bytes are always logged so values can be recomputed later.
+
+Table 0x17 (19 bytes on the Wave):
+  d0-1  RPM (16-bit)            confirmed (idle ~1000, revs to 5400)
+  d2    TPS volts  *5/256       confirmed
+  d3    TPS %      /1.6         sheet says *0.5; /1.6 fits the tune's 100.6 % axis.
+                                Unverified: check raw ~160 at full throttle
+  d4    ECT volts  *5/256
+  d5    ECT °C     -40          confirmed. On the air-cooled Wave this is the
+                                engine (oil) temp sensor
+  d6-7  0xFF on the Wave
+  d8    EOT volts  *5/256       0xFF on the Wave (not fitted)
+  d9    EOT °C     -40          0xFF on the Wave (not fitted)
+  d10   Battery V  *0.1         confirmed (11.7 key on, 8.8 cranking, 13-14 running)
+  d11-12 Injector (16-bit) / INJ_DIVISOR ms   position confirmed (0 on decel
+                                fuel cut), divisor unverified
+  d13   Ignition °BTDC -64+*0.5 confirmed against the ignition map
+  d14   Fast idle  0x80 = on    0x80 while cold (41 °C)
+  d15   Speed km/h              unverified (0 while standing)
+
+Table 0x20: d0 O2 *5/256, d1 STFT /128 (128 = 1.00), d2 O2 heater *5/256.
 """
 
-import struct
+# ms = raw16 / INJ_DIVISOR. 200 from the RE-ECU-th sheet; HondaECU uses
+# 65535/265.5 (~246.8). Unverified: idle reads ~4.5 ms with 200, ~3.6 ms with 246.8.
+INJ_DIVISOR = 200
 
 FIELDS = [
     # key, label, unit, decimals
     ("rpm", "RPM", "rpm", 0),
     ("tps_pct", "TPS", "%", 1),
-    ("ect_c", "ECT", "°C", 0),
+    ("ect_c", "Eng temp", "°C", 0),
     ("batt_v", "Batt", "V", 1),
     ("speed_kmh", "Speed", "km/h", 0),
     ("inj_ms", "Inj", "ms", 2),
     ("ign_deg", "Ign", "°", 1),
     ("o2_v", "O2", "V", 2),
     ("stft", "STFT", "", 3),
+    ("fast_idle", "Fast idle", "", 0),
 ]
 
-FMT_17 = ">H12BHBBB"
+
+def _temp(raw):
+    """°C from a raw temperature byte; 0xFF = sensor not fitted."""
+    return None if raw == 0xFF else raw - 40
 
 
 def decode_17(d: bytes) -> dict:
-    n = struct.calcsize(FMT_17)
-    if len(d) < n:
+    if len(d) < 16:
         return {}
-    v = list(struct.unpack(FMT_17, d[:n]))
-    v = v[:9] + [0xFF, 0xFF] + v[9:]          # HondaECU insertion for 0x13/0x17
-    out = {
-        "rpm": v[0],
-        "tps_v": round(v[1] / 255 * 5, 2),
-        "tps_pct": round(v[2] / 1.6, 2),
-        "ect_c": v[4] - 40,
-        "batt_v": round(v[11] / 10, 2),
-        "speed_kmh": v[12],
-        "inj_ms": round(v[13] / 0xFFFF * 265.5, 2),
-        "ign_deg": round(-64 + v[14] / 255 * 127.5, 2),
+    return {
+        "rpm": d[0] << 8 | d[1],
+        "tps_v": round(d[2] * 5 / 256, 2),
+        "tps_pct": round(d[3] / 1.6, 2),
+        "ect_c": _temp(d[5]),
+        "eot_c": _temp(d[9]),
+        "batt_v": round(d[10] * 0.1, 1),
+        "inj_ms": round((d[11] << 8 | d[12]) / INJ_DIVISOR, 2),
+        "ign_deg": round(-64 + d[13] * 0.5, 1),
+        "fast_idle": 1 if d[14] >= 0x80 else 0,
+        "speed_kmh": d[15],
     }
-    out["iat_c"] = None if v[6] == 0xFF else v[6] - 40     # 0xFF = not available
-    out["map_mbar"] = None if v[8] == 0xFF else v[8] * 10
-    return out
 
 
 def decode_20(d: bytes) -> dict:
     if len(d) < 3:
         return {}
     return {
-        "o2_v": round(d[0] / 255 * 5, 2),
-        "stft": round(d[1] / 255 * 2, 4),
-        "o2_heater_v": round(d[2] / 255 * 5, 2),
+        "o2_v": round(d[0] * 5 / 256, 2),
+        "stft": round(d[1] / 128, 4),
+        "o2_heater_v": round(d[2] * 5 / 256, 2),
     }
+
+
+DECODERS = {0x17: decode_17, 0x20: decode_20}
 
 
 def alerts(s: dict) -> set:

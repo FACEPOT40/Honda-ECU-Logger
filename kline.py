@@ -11,6 +11,8 @@ import random
 import struct
 import time
 
+import decode
+
 try:
     import serial
     import serial.tools.list_ports
@@ -134,18 +136,19 @@ class SimECU:
         tps_raw = int(cyc * 150)
         rpm = int(1400 + cyc * 7000 + random.uniform(-40, 40))
         if table == 0x00:
-            data = bytes.fromhex("01 03 3E 0D 01")
+            data = bytes.fromhex("01 03 3E 0D 01 00 00 00 00 00")   # as the real Wave sends it
         elif table == 0x17:
-            ect = min(60 + t * 0.5, 112) + 40
-            # bytes placed where decode.decode_17 (HondaECU layout) reads them
-            inj = min(255, int((0.5 + cyc * 0.5) / 265.5 * 0xFFFF))
-            ign = int((16 + cyc * 15 + 64) / 127.5 * 255)
-            data = struct.pack(">H12BHBBB", rpm, int(cyc * 200), tps_raw, 80, int(ect),
-                               255, 255, 255, 255, 138, int(cyc * 110), inj, ign,
-                               0, 0, 0, 0)
+            ect = int(min(40 + t * 0.5, 112))
+            # same layout as the real Wave (see decode.py); 0xFF = sensor not fitted
+            inj = int((2.5 + cyc * 4) * decode.INJ_DIVISOR)
+            ign = int((16 + cyc * 30 + 64) * 2)
+            data = struct.pack(">HBBBB4BBHBBB3B", rpm, 0x19 + int(cyc * 120), tps_raw,
+                               0x75, ect + 40, 0xFF, 0xFF, 0xFF, 0xFF,
+                               138 - random.randint(0, 5), inj, ign,
+                               0x80 if ect < 60 else 0, int(cyc * 110), 0, 0, 0)
         elif table == 0x20:
             o2 = random.randint(20, 230) if cyc < 0.6 else random.randint(180, 230)
-            data = bytes([o2, 128 + random.randint(-6, 6), 200])
+            data = bytes([o2, 128 + random.randint(-6, 6), 0])
         else:
             return None
         body = bytes([0x02, len(data) + 5, 0x71, table]) + data

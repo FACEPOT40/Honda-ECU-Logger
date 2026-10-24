@@ -21,10 +21,14 @@ Usage:
 import argparse
 import csv
 import datetime as dt
-import random
-import struct
+import os
 import sys
 import time
+
+# decoding and the simulator are shared with the app (project folder = parent of tools\)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from decode import DECODERS  # noqa: E402
+from kline import SimECU, payload  # noqa: E402
 
 try:
     import serial
@@ -121,86 +125,6 @@ class KLine:
         return msg if ok else None
 
 
-# ---------------------------------------------------------------- decoding --
-
-def payload(reply: bytes, table: int) -> bytes:
-    """Strip header (type, len), echoed '71 tt' and the checksum."""
-    body = reply[2:-1]
-    if len(body) >= 2 and body[0] == 0x71 and body[1] == table:
-        body = body[2:]
-    return body
-
-
-def decode_17_hondaecu(d: bytes):
-    """Same layout/formulas as HondaECU src/frames/data.py (unverified on Wave)."""
-    fmt = ">H12BHBBB"
-    if len(d) < struct.calcsize(fmt):
-        return None
-    v = list(struct.unpack(fmt, d[:struct.calcsize(fmt)]))
-    v = v[:9] + [0xFF, 0xFF] + v[9:]          # HondaECU's insertion for 0x13/0x17
-    return {
-        "rpm": v[0],
-        "tps_v": round(v[1] / 255 * 5, 2),
-        "tps_pct": round(v[2] / 1.6, 2),
-        "ect_c": v[4] - 40,
-        "iat_c": v[6] - 40,
-        "map_mbar": v[8] * 10,
-        "batt_v": round(v[11] / 10, 2),
-        "speed_kmh": v[12],
-        "inj_ms": round(v[13] / 0xFFFF * 265.5, 2),
-        "ign_deg": round(-64 + v[14] / 255 * 127.5, 2),
-    }
-
-
-def decode_20(d: bytes):
-    if len(d) < 3:
-        return None
-    return {
-        "o2_v": round(d[0] / 255 * 5, 2),
-        "stft": round(d[1] / 255 * 2, 4),
-        "o2_heater_v": round(d[2] / 255 * 5, 2),
-    }
-
-
-# --------------------------------------------------------------- simulator --
-
-class SimECU:
-    """Fake ECU so the script can be tested without a bike."""
-    echo = True
-
-    def __init__(self, *a, **k):
-        self.t0 = time.time()
-
-    def close(self):
-        pass
-
-    def wake(self):
-        time.sleep(0.19)
-
-    def send(self, msg):
-        if not msg.startswith(ALLOWED_PREFIXES):
-            raise RuntimeError("Blocked")
-        time.sleep(0.02)
-        if msg == WAKE_MSG:
-            return bytes.fromhex("0E 04 72 7C")
-        if msg == INIT_MSG:
-            return bytes.fromhex("02 04 00 FA")
-        table = msg[3]
-        if table == 0x00:
-            data = bytes.fromhex("01 03 3E 0D 01")
-        elif table == 0x17:
-            t = time.time() - self.t0
-            rpm = int(1400 + 3000 * (1 + __import__("math").sin(t)) / 2)
-            data = struct.pack(">H12BHBBB", rpm, 30, 40, 80, 120, 255, 255, 255, 255,
-                               138, 0, 222, 158, 0, 0, 0, 0)
-        elif table == 0x20:
-            data = bytes([random.randint(20, 230), 128, 200])
-        else:
-            return None
-        body = bytes([0x02, len(data) + 5, 0x71, table]) + data
-        return body + bytes([checksum(body)])
-
-
 # -------------------------------------------------------------------- main --
 
 def main():
@@ -254,7 +178,7 @@ def main():
         # 2) ECM ID
         r = ecu.send(query_msg(0x00))
         print("ECM ID reply:", r.hex(" ") if r else "none",
-              "| ID:", payload(r, 0x00).hex(" ") if r else "-")
+              "| ID:", payload(r, 0x00)[:5].hex(" ") if r else "-")
 
         # 3) poll tables
         n, errors, t_start = 0, 0, time.time()
@@ -270,7 +194,11 @@ def main():
                         w.writerow([ts, f"0x{t:02X}", 0, "", "NO REPLY"])
                         continue
                     d = payload(r, t)
-                    dec = decode_17_hondaecu(d) if t == 0x17 else decode_20(d) if t == 0x20 else None
+                    if not d:   # "02 05 71 tt cs": the ECU has no such table
+                        w.writerow([ts, f"0x{t:02X}", 0, "", "NOT SUPPORTED"])
+                        print(f"{ts[11:]}  0x{t:02X} not supported by this ECU")
+                        continue
+                    dec = DECODERS[t](d) if t in DECODERS else None
                     w.writerow([ts, f"0x{t:02X}", len(d), d.hex(" "), dec])
                     print(f"{ts[11:]}  0x{t:02X} [{len(d):2}] {d.hex(' ')}")
                     if dec:

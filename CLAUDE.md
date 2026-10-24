@@ -14,12 +14,12 @@ changes briefly and plainly). License GPL-3.0. Full background: `docs/PLAN.md`.
 
 ## Files
 - `kline.py`: serial link (10400 8N1, break-based wake, echo detection, checksum), `SimECU`
-- `decode.py`: `FIELDS`, `decode_17`, `decode_20`, `alerts`
+- `decode.py`: `FIELDS`, `decode_17`, `decode_20`, `DECODERS`, `alerts` (byte map in docstring)
 - `worker.py`: `PollWorker` QThread (connect, ECM ID, poll 0x17 + 0x20, auto-reconnect)
 - `recorder.py`: CSV writer (wall-clock `timestamp` primary, `elapsed_s`, marker, raw bytes)
 - `app.py`: main window (live values, 4 dual-axis graphs, record, marker `M`)
 - `viewer.py`: ride viewer (tick values, one graph per value, presets, one-at-a-time, cursor readout)
-- `tools/m0_probe.py`: console protocol probe
+- `tools/m0_probe.py`: console protocol probe (uses `decode.py` and `kline.SimECU`)
 
 ## Run / test
 ```
@@ -41,7 +41,16 @@ may look unusual.
   app from a non-writable folder made `Recorder.start()` raise PermissionError silently. Now
   `recorder.default_log_dir()` (next to app/.exe, fallback Documents\HondaECULogger\logs) plus an
   error popup. Not yet confirmed by Pai; if it still happens, ask for console output / exact steps.
-- **M0 never run on the real bike**: our code has only talked to `SimECU`. Values can't be trusted yet.
-- Table 0x17 layout (inj/ign/batt/speed positions) comes from HondaECU and is **unverified on
-  the Wave**. Verify against real raw bytes (`raw_17` column) before trusting decoded values.
-- STFT formula (raw/255*2) unverified; one real reading was 1.0039.
+- **M0 run on the real bike 24 Oct 2026** (key-on + engine-running logs, not committed).
+  Link works (echo on, ~20 reads/s per table). Table 0x17 layout now follows the RE-ECU-th
+  sheet, checked byte by byte against those logs; full map in the `decode.py` docstring.
+  The old HondaECU layout (with its 0xFF insertion) was wrong for inj/speed on the Wave.
+  Confirmed: RPM, TPS V, ECT (d5, the Wave's only temp sensor; EOT d9 = 0xFF), battery,
+  ignition (matches Pai's ignition map within ~1.5°), injector position d11-12.
+  Still open:
+  - `INJ_DIVISOR` (200 from sheet vs ~246.8 HondaECU)
+  - TPS % scale: /1.6 (fits tune's 100.6 % axis) vs sheet's *0.5. Check raw d3 at full throttle (~160 = /1.6)
+  - speed = d15 (0 while standing; verify on a ride)
+  - STFT /128: only seen at 128 (cold engine, open loop); verify warm
+- Table 0xD1 (side stand / neutral, fuel pump, fan) is readable with the existing `71` query;
+  not polled yet (would cut the rate to ~14/s per table).

@@ -5,7 +5,7 @@ import time
 
 from PySide6.QtCore import QThread, Signal
 
-from decode import decode_17, decode_20
+from decode import DECODERS
 from kline import INIT_MSG, INIT_OK, WAKE_MSG, KLine, SimECU, payload, query_msg
 
 ECU_NAMES = {
@@ -57,24 +57,31 @@ class PollWorker(QThread):
 
             r = link.send(query_msg(0x00))
             if r:
-                ecm_id = payload(r, 0x00).hex(" ")
+                # the Wave sends 5 ID bytes + 5 zero bytes; the ID is the first 5
+                ecm_id = payload(r, 0x00)[:5].hex(" ")
                 self.ecm.emit(f"{ecm_id.upper()}  ({ECU_NAMES.get(ecm_id, 'unknown')})")
-            self.status.emit("Connected" + (" (SIMULATOR)" if self.simulate else ""))
+            connected = "Connected" + (" (SIMULATOR)" if self.simulate else "")
+            self.status.emit(connected)
 
+            tables = list(DECODERS)
             misses = 0
             while self._run and misses < 5:
                 s = {"t": time.time()}
-                r17 = link.send(query_msg(0x17))
-                r20 = link.send(query_msg(0x20))
-                if r17:
-                    d = payload(r17, 0x17)
-                    s.update(decode_17(d))
-                    s["raw_17"] = d.hex()
-                if r20:
-                    d = payload(r20, 0x20)
-                    s.update(decode_20(d))
-                    s["raw_20"] = d.hex()
-                if r17 or r20:
+                got = False
+                for t in list(tables):
+                    r = link.send(query_msg(t))
+                    if not r:
+                        continue
+                    got = True
+                    d = payload(r, t)
+                    if not d:
+                        # "02 05 71 tt cs": the ECU answered but has no such table
+                        tables.remove(t)
+                        self.status.emit(f"{connected}, table 0x{t:02X} not supported by this ECU")
+                        continue
+                    s.update(DECODERS[t](d))
+                    s[f"raw_{t:02x}"] = d.hex()
+                if got:
                     misses = 0
                     self.sample.emit(s)
                 else:

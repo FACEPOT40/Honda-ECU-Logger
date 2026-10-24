@@ -33,7 +33,7 @@ You can't look at a screen while riding. So: connect, press **Start Record**, ri
 | Cable | FTDI FT232R USB-to-K-line, on the red 4-pin DLC |
 | Driver | Official FTDI VCP driver (shows as a COM port) |
 
-⚠️ The table 0x17 field layout is taken from HondaECU and is **not yet verified on the Wave**. Raw bytes are always saved (`raw_17`, `raw_20`) so values can be recomputed later.
+The table 0x17 layout follows the RE-ECU-th PGM-FI live data sheet and was checked against real Wave logs: RPM, TPS, engine temp, battery and ignition are confirmed. ⚠️ Injector scale, speed and STFT are **not yet verified** on a ride. Raw bytes are always saved (`raw_17`, `raw_20`) so values can be recomputed later.
 
 ## Install & run (Windows)
 1. Install **Python 3.12** from python.org (tick *Add Python to PATH*).
@@ -57,7 +57,7 @@ build_exe.bat
 Output: `dist\HondaECULogger.exe`
 
 ## CSV columns
-`timestamp, elapsed_s, rpm, tps_pct, ect_c, batt_v, speed_kmh, inj_ms, ign_deg, o2_v, stft, marker, raw_17, raw_20`
+`timestamp, elapsed_s, rpm, tps_pct, ect_c, batt_v, speed_kmh, inj_ms, ign_deg, o2_v, stft, fast_idle, marker, raw_17, raw_20`
 
 ## Protocol test tool
 `tools/m0_probe.py` is a console script that wakes the ECU, reads the ECM ID and prints raw table bytes. Use it to verify a new bike/ECU:
@@ -69,6 +69,7 @@ python tools\m0_probe.py --port COM3 --seconds 30 -v
 ## Credits
 - Protocol notes: [AutotronicCommunity/Honda_Keihin_KLine_Protocol](https://github.com/AutotronicCommunity/Honda_Keihin_KLine_Protocol)
 - Value formulas: [HondaECU](https://github.com/aeaphichart/HondaECU-1) (MCU Innovations / RyanHope, GPL-3.0)
+- Table layout: RE-ECU-th "Protokol Live Data PGM-FI Honda Bike" sheet
 
 ## License
 GPL-3.0
