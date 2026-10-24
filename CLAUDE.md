@@ -36,11 +36,11 @@ Engine is modified (54 mm bore, 28 mm TB, cam, 125cc injector, E20, custom tune)
 may look unusual.
 
 ## Known open issues
-- **Start Record button can't be clicked** (reported 23 Oct 2026, v0.2.0). Likely cause found
-  and fixed 23 Oct: logs went to a `logs` folder relative to the current folder, so starting the
+- ~~Start Record button can't be clicked~~ (reported 23 Oct 2026, v0.2.0). **Fixed and confirmed
+  by Pai 23 Oct**: logs went to a `logs` folder relative to the current folder, so starting the
   app from a non-writable folder made `Recorder.start()` raise PermissionError silently. Now
   `recorder.default_log_dir()` (next to app/.exe, fallback Documents\HondaECULogger\logs) plus an
-  error popup. Not yet confirmed by Pai; if it still happens, ask for console output / exact steps.
+  error popup.
 - **M0 run on the real bike 24 Oct 2026** (key-on + engine-running logs, not committed).
   Link works (echo on, ~20 reads/s per table). Table 0x17 layout now follows the RE-ECU-th
   sheet, checked byte by byte against those logs; full map in the `decode.py` docstring.
