@@ -13,3 +13,6 @@ m0_log_*.csv
 *.xdf
 *.dat
 *.exe
+
+# Pai's tune maps (personal, kept local)
+tune/
