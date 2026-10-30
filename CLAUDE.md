@@ -30,6 +30,10 @@ changes briefly and plainly). License GPL-3.0. Full background: `docs/PLAN.md`.
   Tested 30 Oct on the emulator (`Medium_Phone_API_37.0`) in Simulator mode: tiles, record, marker,
   short screen-off, disconnect, no-cable message; its CSV matches `decode.py` and opens in the
   viewer. The emulator has no USB, so `KLine.kt` and the FTDI link are not yet run on a phone or the bike.
+  Tiles use the same per-value colors as `viewer.py`, and a Values button hides tiles (saved on the
+  phone); hiding is display only, the CSV keeps every value. Built 30 Oct, not yet seen on a screen.
+  Don't start the emulator unless Pai asks: the window it opens from the command line doesn't fit
+  Pai's display. Pai runs it from Android Studio's Device Manager.
 
 ## Run / test
 ```

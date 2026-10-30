@@ -2,6 +2,7 @@ package com.pai.hondaecu
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -33,6 +34,10 @@ import com.hoho.android.usbserial.driver.UsbSerialProber
 class MainActivity : Activity() {
     private val ui = Handler(Looper.getMainLooper())
     private val values = mutableMapOf<String, TextView>()
+    private val tiles = mutableMapOf<String, View>()
+    private lateinit var grid: GridLayout
+    private lateinit var valuesBtn: Button
+    private lateinit var noTilesText: TextView
     private lateinit var statusText: TextView
     private lateinit var ecmText: TextView
     private lateinit var recText: TextView
@@ -153,17 +158,33 @@ class MainActivity : Activity() {
         }
         statusText = text(14f, ORANGE)
         ecmText = text(12f, GREY)
-        root.addView(statusText)
-        root.addView(ecmText)
-
-        val grid = GridLayout(this).apply { columnCount = 2 }
-        for (f in Decode.FIELDS) grid.addView(tile(f), GridLayout.LayoutParams(
-            GridLayout.spec(GridLayout.UNDEFINED), GridLayout.spec(GridLayout.UNDEFINED, 1f)).apply {
-            width = 0
-            setMargins(dp(4), dp(4), dp(4), dp(4))
+        val heading = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(statusText)
+            addView(ecmText)
+        }
+        valuesBtn = button("Values") { chooseValues() }
+        root.addView(LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            addView(heading, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            addView(valuesBtn)
         })
-        root.addView(ScrollView(this).apply { addView(grid) },
+
+        for (f in Decode.FIELDS) tiles[f.key] = tile(f)
+        grid = GridLayout(this).apply { columnCount = 2 }
+        noTilesText = text(14f, GREY).apply {
+            text = "All values are hidden. They are still recorded."
+            gravity = Gravity.CENTER
+            setPadding(dp(12), dp(32), dp(12), dp(32))
+        }
+        val tileArea = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(noTilesText)
+            addView(grid)
+        }
+        root.addView(ScrollView(this).apply { addView(tileArea) },
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        showTiles()
 
         recText = text(12f, GREY)
         root.addView(recText)
@@ -191,23 +212,74 @@ class MainActivity : Activity() {
         return root
     }
 
+    private fun hiddenKeys(): Set<String> =
+        getSharedPreferences(PREFS, MODE_PRIVATE).getStringSet(KEY_HIDDEN, null) ?: emptySet()
+
+    /** Only changes which tiles are on screen: polling and the CSV never look at this. */
+    private fun showTiles() {
+        val hidden = hiddenKeys()
+        val shown = Decode.FIELDS.filter { it.key !in hidden }
+        grid.removeAllViews()
+        for (f in shown) grid.addView(tiles.getValue(f.key), GridLayout.LayoutParams(
+            GridLayout.spec(GridLayout.UNDEFINED), GridLayout.spec(GridLayout.UNDEFINED, 1f)).apply {
+            width = 0
+            setMargins(dp(4), dp(4), dp(4), dp(4))
+        })
+        noTilesText.visibility = if (shown.isEmpty()) View.VISIBLE else View.GONE
+        valuesBtn.text = "Values ${shown.size}/${Decode.FIELDS.size}"
+    }
+
+    private fun chooseValues() {
+        val fields = Decode.FIELDS
+        val hidden = hiddenKeys()
+        val checked = BooleanArray(fields.size) { fields[it].key !in hidden }
+        val names = Array(fields.size) { fieldName(fields[it]) }
+        fun save(keys: Set<String>) {
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putStringSet(KEY_HIDDEN, keys).apply()
+            showTiles()
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Values to show (all are still recorded)")
+            .setMultiChoiceItems(names, checked) { _, i, on -> checked[i] = on }
+            .setPositiveButton("OK") { _, _ ->
+                save(fields.filterIndexed { i, _ -> !checked[i] }.map { it.key }.toSet())
+            }
+            .setNeutralButton("Show all") { _, _ -> save(emptySet()) }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun fieldName(f: Decode.Field) =
+        if (f.unit.isEmpty()) f.label else "${f.label} (${f.unit})"
+
     private fun tile(f: Decode.Field): View {
+        val color = COLORS.getValue(f.key)
         val value = text(30f, Color.WHITE).apply {
             typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
             gravity = Gravity.END
             text = "-"
         }
         values[f.key] = value
+        val swatch = View(this).apply {
+            background = GradientDrawable().apply {
+                setColor(color)
+                cornerRadius = dp(2).toFloat()
+            }
+        }
+        val label = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            addView(swatch, LinearLayout.LayoutParams(dp(12), dp(12)).apply { marginEnd = dp(6) })
+            addView(text(13f, color).apply { text = fieldName(f) })
+        }
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(8), dp(12), dp(8))
             background = GradientDrawable().apply {
                 setColor(TILE)
+                setStroke(dp(1), (color and 0x00FFFFFF) or 0x66000000)
                 cornerRadius = dp(10).toFloat()
             }
-            addView(text(13f, GREY).apply {
-                text = if (f.unit.isEmpty()) f.label else "${f.label} (${f.unit})"
-            })
+            addView(label)
             addView(value)
         }
     }
@@ -233,6 +305,16 @@ class MainActivity : Activity() {
 
     companion object {
         private const val ACTION_USB_PERMISSION = "com.pai.hondaecu.USB_PERMISSION"
+        private const val PREFS = "screen"
+        private const val KEY_HIDDEN = "hidden_values"
+
+        // Same colors as COLORS in viewer.py, so a value looks the same on the phone and the PC
+        private val COLORS = mapOf(
+            "rpm" to "#4fc3f7", "tps_pct" to "#ffb74d", "ect_c" to "#ef5350",
+            "batt_v" to "#9ccc65", "speed_kmh" to "#ba68c8", "inj_ms" to "#4db6ac",
+            "ign_deg" to "#fff176", "o2_v" to "#f06292", "stft" to "#e0e0e0",
+            "mode_d14" to "#90a4ae", "neutral" to "#a1887f",
+        ).mapValues { Color.parseColor(it.value) }
         private val BACKGROUND = Color.parseColor("#101214")
         private val TILE = Color.parseColor("#1E2226")
         private val GREY = Color.parseColor("#A0A8B0")
