@@ -23,6 +23,12 @@ changes briefly and plainly). License GPL-3.0. Full background: `docs/PLAN.md`.
 - `viewer.py`: ride viewer (tick values, one graph per value, presets, one-at-a-time, cursor readout)
 - `tools/m0_probe.py`: console protocol probe (uses `decode.py` and `kline.SimECU`)
 
+- `android/`: Kotlin recorder app (tiles, Start/Stop Record, marker; graphs stay on the PC). Same
+  read-only whitelist (`Protocol.kt`) and same CSV. `Decode.kt` / `CsvFormat.kt` must stay in step
+  with `decode.py` / `recorder.py`. Build: `android\gradlew.bat testDebugUnitTest assembleDebug`
+  with `JAVA_HOME` = Android Studio's `jbr`. `DecodeTest` compares with Python vectors.
+  Unit-tested and built 30 Oct; not yet run on a phone or the bike.
+
 ## Run / test
 ```
 pip install -r requirements.txt
