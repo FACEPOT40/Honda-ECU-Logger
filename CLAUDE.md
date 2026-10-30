@@ -27,7 +27,9 @@ changes briefly and plainly). License GPL-3.0. Full background: `docs/PLAN.md`.
   read-only whitelist (`Protocol.kt`) and same CSV. `Decode.kt` / `CsvFormat.kt` must stay in step
   with `decode.py` / `recorder.py`. Build: `android\gradlew.bat testDebugUnitTest assembleDebug`
   with `JAVA_HOME` = Android Studio's `jbr`. `DecodeTest` compares with Python vectors.
-  Unit-tested and built 30 Oct; not yet run on a phone or the bike.
+  Tested 30 Oct on the emulator (`Medium_Phone_API_37.0`) in Simulator mode: tiles, record, marker,
+  short screen-off, disconnect, no-cable message; its CSV matches `decode.py` and opens in the
+  viewer. The emulator has no USB, so `KLine.kt` and the FTDI link are not yet run on a phone or the bike.
 
 ## Run / test
 ```

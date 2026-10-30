@@ -34,7 +34,7 @@ object Live {
  * while it runs; the partial wake lock stops the CPU from sleeping during a ride.
  */
 class LoggerService : Service() {
-    private var poller: Poller? = null
+    @Volatile private var poller: Poller? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private val lock = Any()
     private var writer: BufferedWriter? = null
@@ -64,15 +64,22 @@ class LoggerService : Service() {
         if (poller != null) return
         wakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager)
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "HondaECU:logging").apply { acquire() }
-        val p = Poller(
+        // A stopped poller's thread can still report once more: ignore it, or its last
+        // update brings back the notification and the tile values after Disconnect.
+        lateinit var p: Poller
+        p = Poller(
             openLink = { if (sim) SimEcu() else KLine(this) },
             simulate = sim,
             onStatus = {
-                Live.status = it
-                updateNotification()
+                synchronized(lock) {
+                    if (poller === p) {
+                        Live.status = it
+                        updateNotification()
+                    }
+                }
             },
-            onEcm = { Live.ecm = it },
-            onSample = ::onSample,
+            onEcm = { if (poller === p) Live.ecm = it },
+            onSample = { if (poller === p) onSample(it) },
         )
         poller = p
         Live.connected = true
@@ -153,7 +160,7 @@ class LoggerService : Service() {
     private fun disconnect() {
         stopRecording()
         poller?.stop()
-        poller = null
+        synchronized(lock) { poller = null }
         Live.connected = false
         Live.status = "Disconnected"
         Live.ecm = "-"
@@ -165,13 +172,19 @@ class LoggerService : Service() {
     }
 
     override fun onDestroy() {
-        stopRecording()
         poller?.stop()
+        synchronized(lock) { poller = null }
+        stopRecording()
+        Live.connected = false
+        Live.status = "Disconnected"
+        Live.ecm = "-"
+        Live.sample = emptyMap()
         wakeLock?.let { if (it.isHeld) it.release() }
         super.onDestroy()
     }
 
     private fun updateNotification() {
+        if (poller == null) return      // disconnected: the notification must stay gone
         val text = (if (Live.recording) "● Recording · " else "") + Live.status
         getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(text))
     }

@@ -136,7 +136,7 @@ class MainActivity : Activity() {
             Live.recordingFile.isNotEmpty() -> "Saved " + Live.recordingFile
             else -> ""
         }
-        val s = Live.sample
+        val s = if (on) Live.sample else emptyMap()     // never show old numbers as if live
         val bad = Decode.alerts(s)
         for (f in Decode.FIELDS) {
             val t = values.getValue(f.key)
