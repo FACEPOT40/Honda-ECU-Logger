@@ -20,8 +20,10 @@ styles buttons (Connect blue, Start Record amber, Stop red, chosen option blue).
 (viewer.COLORS / Look.COLORS) are separate and unchanged.
 About (3 Nov): PC `AboutDialog` in app.py (Help → About) and phone `AboutActivity` (ⓘ button on
 the main screen) say the same things: name, version, read only, ride safe, tested bike, credits,
-GPL-3.0 + GitHub link (`REPO_URL`), Honda disclaimer. Keep both in step. Versions differ for now:
-PC `app.VERSION` 0.2.0, Android `versionName` 0.1.0.
+GPL-3.0 + GitHub link (`REPO_URL`), Honda disclaimer, "Made by FACEPOT40" (Pai's GitHub name).
+Keep both in step.
+Versions: both apps 0.3.0 since the rebrand (3 Nov): PC `app.VERSION`, Android `versionName`
+(+ `versionCode` 2; raise versionCode on every phone release). Bump both together.
 
 Windows desktop app (Python, PySide6 + pyqtgraph + pyserial) that logs live data from a
 Honda/Keihin K-line ECU and records rides to CSV. Owner: Pai (IT support, learning; explain
