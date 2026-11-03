@@ -7,7 +7,7 @@ import time
 from PySide6.QtCore import QThread, Signal
 
 from decode import DECODERS
-from kline import INIT_MSG, INIT_OK, WAKE_MSG, KLine, SimECU, payload, query_msg
+from kline import INIT_MSG, INIT_OK, WAKE_MSG, KLine, SimECU, payload, query_msg, read_dtcs
 
 # tables that change slowly are asked only every Nth cycle, so the main values stay fast
 EVERY = {0xD1: 5}   # neutral / in gear
@@ -23,6 +23,7 @@ class PollWorker(QThread):
     status = Signal(str)
     ecm = Signal(str)
     sample = Signal(dict)
+    faults = Signal(object)    # kline.read_dtcs() result, after connecting and on request
 
     def __init__(self, port=None, simulate=False):
         super().__init__()
@@ -30,6 +31,11 @@ class PollWorker(QThread):
         self.simulate = simulate
         self._run = True
         self.link = None
+        self._want_faults = False
+
+    def request_faults(self):
+        """Read the fault codes again between two polling cycles (read only)."""
+        self._want_faults = True
 
     def stop(self):
         self._run = False
@@ -91,12 +97,17 @@ class PollWorker(QThread):
             ecm_id = payload(r, 0x00)[:5].hex(" ")
             self.ecm.emit(f"{ecm_id.upper()}  ({ECU_NAMES.get(ecm_id, 'unknown')})")
         connected = "Connected" + (" (SIMULATOR)" if self.simulate else "")
+        self.faults.emit(read_dtcs(link))      # about 22 short queries, once per connection
+        self._want_faults = False
         self.status.emit(connected)
 
         tables = list(DECODERS)
         last = {}   # latest values of the slow tables, repeated in every sample
         cycle = misses = 0
         while self._run and misses < 5:
+            if self._want_faults:
+                self._want_faults = False
+                self.faults.emit(read_dtcs(link))
             s = {"t": time.time()}
             got = False
             for t in list(tables):

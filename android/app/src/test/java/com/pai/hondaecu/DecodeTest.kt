@@ -53,8 +53,13 @@ class DecodeTest {
         Protocol.requireAllowed(Protocol.WAKE_MSG)
         Protocol.requireAllowed(Protocol.INIT_MSG)
         Protocol.requireAllowed(Protocol.queryMsg(0x17))
+        Protocol.requireAllowed(Protocol.queryMsg(1, Protocol.DTC_CURRENT))     // fault codes: read only
+        Protocol.requireAllowed(Protocol.queryMsg(11, Protocol.DTC_PAST))
         assertEquals("72057117" + "01", Protocol.toHex(Protocol.queryMsg(0x17)))
-        for (bad in listOf("72 05 72 17 00", "7D 01 01", "72 06 71 17 00 00", "72 05 71 17 02")) {
+        assertEquals("72057401" + "14", Protocol.toHex(Protocol.queryMsg(1, Protocol.DTC_CURRENT)))
+        // the clear-codes command (72 05 60 03, as HondaECU sends it) must never pass
+        for (bad in listOf("72 05 72 17 00", "7D 01 01", "72 06 71 17 00 00", "72 05 71 17 02",
+                "72 05 60 03 26", "72 06 60 03 00 25", "72 05 74 01 00")) {
             var blocked = false
             try {
                 Protocol.requireAllowed(Protocol.hex(bad))
@@ -73,6 +78,17 @@ class DecodeTest {
         assertEquals(19, Protocol.payload(r, 0x17).size)
         assertTrue(Protocol.payload(sim.send(Protocol.queryMsg(0x10))!!, 0x10).isEmpty())
         assertFalse(Decode.decode17(Protocol.payload(r, 0x17)).isEmpty())
+    }
+
+    @Test
+    fun faultCodesFromTheSimulator() {
+        val f = Protocol.readFaults(SimEcu())
+        assertTrue(f.supported)
+        assertEquals(emptyList<Pair<Int, Int>>(), f.current)
+        assertEquals(listOf(7 to 1), f.past)
+        assertEquals("07-01  Engine temp sensor (ECT/EOT), low voltage  (MIL 7 blinks)", Decode.dtcText(7, 1))
+        assertEquals(listOf(8 to 2, 54 to 1), Decode.decodeDtc(Protocol.hex("00 08 02 00 00 36 01")))
+        assertEquals("33-02  unknown: see the service manual  (MIL 33 blinks)", Decode.dtcText(33, 2))
     }
 
     @Test

@@ -28,6 +28,7 @@ object Live {
     @Volatile var recordingStart = 0L
     @Volatile var recordError = ""
     val history = History()                     // for the live graphs only
+    @Volatile var faults: Protocol.Faults? = null   // fault codes read after connecting / on request
 }
 
 /**
@@ -56,6 +57,10 @@ class LoggerService : Service() {
             ACTION_RECORD -> startRecording()
             ACTION_STOP_RECORD -> stopRecording()
             ACTION_MARK -> mark()
+            ACTION_READ_FAULTS -> {
+                Live.faults = null                  // "reading…" until the poller answers
+                poller?.requestFaults()
+            }
         }
         return START_NOT_STICKY
     }
@@ -85,6 +90,7 @@ class LoggerService : Service() {
             },
             onEcm = { if (poller === p) Live.ecm = it },
             onSample = { if (poller === p) onSample(it) },
+            onFaults = { if (poller === p) Live.faults = it },
         )
         poller = p
         Live.history.clear()
@@ -177,6 +183,7 @@ class LoggerService : Service() {
         Live.connected = false
         Live.status = "Disconnected"
         Live.ecm = "-"
+        Live.faults = null
         Live.sample = emptyMap()
         wakeLock?.let { if (it.isHeld) it.release() }
         wakeLock = null
@@ -192,6 +199,7 @@ class LoggerService : Service() {
         Live.connected = false
         Live.status = "Disconnected"
         Live.ecm = "-"
+        Live.faults = null
         Live.sample = emptyMap()
         wakeLock?.let { if (it.isHeld) it.release() }
         super.onDestroy()
@@ -224,6 +232,7 @@ class LoggerService : Service() {
         const val ACTION_RECORD = "record"
         const val ACTION_STOP_RECORD = "stop_record"
         const val ACTION_MARK = "mark"
+        const val ACTION_READ_FAULTS = "read_faults"
         const val EXTRA_SIM = "sim"
         private const val CHANNEL = "logging"
         private const val NOTIFICATION_ID = 1

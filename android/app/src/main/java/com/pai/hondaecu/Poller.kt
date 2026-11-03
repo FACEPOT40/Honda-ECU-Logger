@@ -11,8 +11,15 @@ class Poller(
     private val onStatus: (String) -> Unit,
     private val onEcm: (String) -> Unit,
     private val onSample: (Map<String, Any?>) -> Unit,
+    private val onFaults: (Protocol.Faults) -> Unit = {},
 ) {
     @Volatile private var running = true
+    @Volatile private var wantFaults = false
+
+    /** Read the fault codes again between two polling cycles (read only). */
+    fun requestFaults() {
+        wantFaults = true
+    }
 
     fun stop() {
         running = false
@@ -63,6 +70,8 @@ class Poller(
             onEcm("$id  (${ECU_NAMES[id] ?: "unknown"})")
         }
         val connected = "Connected" + if (simulate) " (SIMULATOR)" else ""
+        onFaults(Protocol.readFaults(link))        // about 22 short queries, once per connection
+        wantFaults = false
         onStatus(connected)
 
         val tables = Decode.DECODERS.keys.toMutableList()
@@ -70,6 +79,10 @@ class Poller(
         var cycle = 0
         var misses = 0
         while (running && misses < 5) {
+            if (wantFaults) {
+                wantFaults = false
+                onFaults(Protocol.readFaults(link))
+            }
             val s = mutableMapOf<String, Any?>("t" to System.currentTimeMillis())
             var got = false
             for (t in tables.toList()) {

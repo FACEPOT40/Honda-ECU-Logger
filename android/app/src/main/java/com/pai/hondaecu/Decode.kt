@@ -76,6 +76,27 @@ object Decode {
         return "%,.${f.decimals}f".format(java.util.Locale.US, (v as Number).toDouble())
     }
 
+    // Fault codes, same as decode.py: main-sub (e.g. 07-01); main = number of MIL blinks.
+    // Only the sensor groups common to Honda PGM-FI motorcycle manuals get a name.
+    const val DTC_PAGES = 11
+    private val DTC_NAMES = mapOf(
+        1 to "MAP sensor", 7 to "Engine temp sensor (ECT/EOT)", 8 to "Throttle position sensor",
+        9 to "Intake air temp sensor", 11 to "Vehicle speed sensor", 12 to "Injector",
+        21 to "O2 sensor", 23 to "O2 sensor heater", 29 to "Idle air control valve",
+        54 to "Bank angle sensor",
+    )
+    private val DTC_VOLTAGE_GROUPS = setOf(1, 7, 8, 9, 54)    // -1 low voltage, -2 high voltage
+
+    /** (main, sub) codes in one page reply (payload after the echoed query + page). */
+    fun decodeDtc(d: ByteArray): List<Pair<Int, Int>> =
+        listOf(1, 3, 5).filter { it + 1 < d.size && u(d, it) != 0 }.map { u(d, it) to u(d, it + 1) }
+
+    fun dtcText(main: Int, sub: Int): String {
+        var name = DTC_NAMES[main] ?: "unknown: see the service manual"
+        if (main in DTC_VOLTAGE_GROUPS && sub in 1..2) name += if (sub == 1) ", low voltage" else ", high voltage"
+        return "%02d-%02d  %s  (MIL %d blinks)".format(main, sub, name, main)
+    }
+
     /** Keys that should be shown in red; same rules as alerts() in decode.py. */
     fun alerts(s: Map<String, Any?>): Set<String> {
         val bad = mutableSetOf<String>()

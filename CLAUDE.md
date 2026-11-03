@@ -5,15 +5,25 @@ Honda/Keihin K-line ECU and records rides to CSV. Owner: Pai (IT support, learni
 changes briefly and plainly). License GPL-3.0. Full background: `docs/PLAN.md`.
 
 ## Hard rules
-- **Read-only, always.** Only wake (`FE 04 72 8C`), init (`72 05 00 F0 99`) and table queries
-  (`72 05 71 <table> <cs>`) may be sent. `kline.ALLOWED_PREFIXES` enforces this. Never add
-  write / flash / EEPROM / security-access commands, and never widen the whitelist.
+- **Read-only, always.** Only wake (`FE 04 72 8C`), init (`72 05 00 F0 99`), table queries
+  (`72 05 71 <table> <cs>`) and fault-code reads (`72 05 74 <page> <cs>` current,
+  `72 05 73 <page> <cs>` past) may be sent, each exactly 5 bytes with a correct checksum.
+  `kline.allowed()` and `Protocol.isAllowed()` enforce this. The two fault-code reads were added
+  3 Nov 2026 with Pai's explicit OK ("read only"). Never clear fault codes (`72 05 60 03`), never
+  add write / flash / EEPROM / security-access commands, and never widen the whitelist further
+  without Pai's explicit decision.
 - Never commit third-party `.bin`, `.xdf`, `.dat`, `.exe` files or real ride logs (`logs/`).
   The XDF author forbids redistribution.
 - Don't touch HondaECU / Honda Flash tool binaries (no reverse engineering or bypassing protection).
 
 ## Files
-- `kline.py`: serial link (10400 8N1, break-based wake, echo detection, checksum), `SimECU`
+- `kline.py`: serial link (10400 8N1, break-based wake, echo detection, checksum), whitelist
+  `allowed()`, `read_dtcs()`, `SimECU` (has one past fault, 07-01)
+- Fault codes (3 Nov): request/reply from HondaECU's open-source `threads/kline.py` +
+  `frames/error.py` (0x74 = current, 0x73 = past, pages 1..11, codes as (main, sub) pairs at
+  payload bytes 1-6). `decode.DTC_NAMES` names only common Honda PGM-FI groups (eculib's list is
+  gone); main number = MIL blinks. Read once per connection + "Read again" (PC Faults button,
+  phone Faults button). `m0_probe.py --dtc` reads them. Not yet tried on the real ECU.
 - `decode.py`: `FIELDS`, `decode_17`, `decode_20`, `decode_d1`, `DECODERS`, `TEXT`/`fmt_value`,
   `alerts` (byte map in docstring)
 - `worker.py`: `PollWorker` QThread (connect, ECM ID, poll 0x17 + 0x20 every cycle and 0xD1

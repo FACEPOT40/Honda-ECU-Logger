@@ -1,9 +1,12 @@
 """K-line link for Honda/Keihin ECUs. READ-ONLY by design.
 
-Only three kinds of message can ever leave this module (whitelist):
-  wake-up  FE 04 72 8C
-  init     72 05 00 F0 99
-  query    72 05 71 <table> <checksum>
+Only these messages can ever leave this module (whitelist, see allowed()):
+  wake-up      FE 04 72 8C
+  init         72 05 00 F0 99
+  live data    72 05 71 <table> <checksum>
+  fault codes  72 05 74 <page> <checksum>  current     (read only; added 3 Nov 2026 with
+               72 05 73 <page> <checksum>  past/stored  Pai's OK, from HondaECU's source)
+Clearing fault codes (72 05 60 03 ..) or anything that writes is never allowed.
 """
 
 import math
@@ -33,19 +36,53 @@ def build(body: bytes) -> bytes:
 WAKE_MSG = bytes.fromhex("FE 04 72 8C")
 INIT_MSG = bytes.fromhex("72 05 00 F0 99")
 INIT_OK = bytes.fromhex("02 04 00 FA")
-ALLOWED_PREFIXES = (WAKE_MSG, INIT_MSG, bytes([0x72, 0x05, 0x71]))
+LIVE = 0x71          # read a live-data table
+DTC_CURRENT = 0x74   # read a page of current fault codes
+DTC_PAST = 0x73      # read a page of past (stored) fault codes
+READ_QUERIES = (LIVE, DTC_CURRENT, DTC_PAST)
 
 
-def query_msg(table: int) -> bytes:
-    return build(bytes([0x72, 0x05, 0x71, table]))
+def query_msg(table: int, query: int = LIVE) -> bytes:
+    return build(bytes([0x72, 0x05, query, table]))
+
+
+def allowed(msg: bytes) -> bool:
+    """True only for wake-up, init, or a 5-byte read query with a correct checksum."""
+    msg = bytes(msg)
+    return msg in (WAKE_MSG, INIT_MSG) or (
+        len(msg) == 5 and msg[:2] == b"\x72\x05" and msg[2] in READ_QUERIES
+        and checksum(msg[:4]) == msg[4])
 
 
 def payload(reply: bytes, table: int) -> bytes:
-    """Strip header (type, len), echoed '71 tt' and checksum."""
+    """Strip header (type, len), the echoed query + table (e.g. '71 17') and checksum."""
     body = reply[2:-1]
-    if len(body) >= 2 and body[0] == 0x71 and body[1] == table:
+    if len(body) >= 2 and body[0] in READ_QUERIES and body[1] == table:
         body = body[2:]
     return body
+
+
+def read_dtcs(link):
+    """Current and past fault codes, read only (pages 1..DTC_PAGES like HondaECU).
+
+    Returns {"current": [(main, sub), ...], "past": [...], "raw": [str, ...], "supported": bool};
+    "supported" is False if the ECU never answered a fault-code query.
+    """
+    out = {"current": [], "past": [], "raw": [], "supported": False}
+    for query, key in ((DTC_CURRENT, "current"), (DTC_PAST, "past")):
+        for page in range(1, decode.DTC_PAGES + 1):
+            r = link.send(query_msg(page, query))
+            if not r:
+                break                          # no answer: not supported, or no more pages
+            d = payload(r, page)
+            out["supported"] = True
+            out["raw"].append(f"{query:02x} page {page:2d}: {d.hex(' ') or '(empty)'}")
+            if not d:
+                break                          # "02 05 74 nn cs": no such page
+            for code in decode.decode_dtc(d):
+                if code not in out[key]:
+                    out[key].append(code)
+    return out
 
 
 def list_ports():
@@ -93,7 +130,7 @@ class KLine:
         return buf
 
     def send(self, msg: bytes):
-        if not msg.startswith(ALLOWED_PREFIXES):
+        if not allowed(msg):
             raise RuntimeError("Blocked non-whitelisted command: " + msg.hex(" "))
         self.ser.reset_input_buffer()
         self.ser.write(msg)
@@ -133,14 +170,19 @@ class SimECU:
         time.sleep(0.19)
 
     def send(self, msg):
-        if not msg.startswith(ALLOWED_PREFIXES):
+        if not allowed(msg):
             raise RuntimeError("Blocked")
         time.sleep(0.02)
         if msg == WAKE_MSG:
             return bytes.fromhex("0E 04 72 7C")
         if msg == INIT_MSG:
             return INIT_OK
-        table = msg[3]
+        query, table = msg[2], msg[3]
+        if query in (DTC_CURRENT, DTC_PAST):
+            # no current faults; one stored: 07-01 (engine temp sensor, low voltage)
+            codes = [7, 1, 0, 0, 0, 0] if query == DTC_PAST and table == 1 else [0] * 6
+            body = bytes([0x02, 12, query, table, 0x00] + codes)
+            return body + bytes([checksum(body)])
         t = time.time() - self.t0
         cyc = (math.sin(t / 3) + 1) / 2              # 0..1 slow throttle wave
         tps_raw = int(cyc * 150)

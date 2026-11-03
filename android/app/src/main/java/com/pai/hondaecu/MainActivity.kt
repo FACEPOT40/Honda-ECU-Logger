@@ -51,6 +51,7 @@ class MainActivity : Activity() {
     private lateinit var connectBtn: Button
     private lateinit var recordBtn: Button
     private lateinit var markBtn: Button
+    private lateinit var faultsBtn: Button
 
     private val usbReceiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
@@ -126,6 +127,24 @@ class MainActivity : Activity() {
 
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_LONG).show()
 
+    /** Fault codes read from the ECU (read only: the app never clears them). */
+    private fun showFaults() {
+        val f = Live.faults
+        val text = when {
+            !Live.connected -> "Connect first: the app reads the fault codes each time it connects."
+            f == null -> "Reading the fault codes…"
+            !f.supported -> "The ECU did not answer the fault-code queries."
+            else -> listOf("Current faults" to f.current, "Past (stored) faults" to f.past).joinToString("\n\n") { (title, codes) ->
+                title + "\n" + (if (codes.isEmpty()) "none" else codes.joinToString("\n") { (m, s) -> Decode.dtcText(m, s) })
+            } + "\n\nThe number before the dash is the MIL blink count. Names are the usual Honda " +
+                "PGM-FI groups: check the Wave 125i service manual. This app only reads codes; it never clears them."
+        }
+        val dialog = android.app.AlertDialog.Builder(this).setTitle("Fault codes (DTC)").setMessage(text)
+            .setPositiveButton("Close", null)
+        if (Live.connected) dialog.setNeutralButton("Read again") { _, _ -> send(LoggerService.ACTION_READ_FAULTS) }
+        dialog.show()
+    }
+
     private fun render() {
         val on = Live.connected
         statusText.text = "● " + Live.status
@@ -135,6 +154,21 @@ class MainActivity : Activity() {
             else -> ORANGE
         })
         ecmText.text = "ECM: " + Live.ecm
+        val f = Live.faults
+        faultsBtn.text = when {
+            !on -> "Faults"
+            f == null -> "Faults…"
+            !f.supported -> "Faults ?"
+            f.current.isNotEmpty() -> "Faults ${f.current.size}+${f.past.size}"
+            f.past.isNotEmpty() -> "Faults (${f.past.size} past)"
+            else -> "No faults"
+        }
+        faultsBtn.setTextColor(when {
+            f == null || !on || !f.supported -> Color.WHITE
+            f.current.isNotEmpty() -> RED
+            f.past.isNotEmpty() -> ORANGE
+            else -> GREEN
+        })
         connectBtn.text = if (on) "Disconnect" else "Connect"
         simBox.isEnabled = !on
         recordBtn.isEnabled = on
@@ -207,6 +241,8 @@ class MainActivity : Activity() {
         root.addView(LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
             addView(recText, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            faultsBtn = button("Faults") { showFaults() }
+            addView(faultsBtn)
             addView(button("Read") { startActivity(Intent(this@MainActivity, RidesActivity::class.java)) })
         })
         simBox = CheckBox(this).apply {

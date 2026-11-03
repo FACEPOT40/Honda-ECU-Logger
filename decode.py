@@ -116,6 +116,40 @@ def decode_d1(d: bytes) -> dict:
 DECODERS = {0x17: decode_17, 0x20: decode_20, 0xD1: decode_d1}
 
 
+# Fault codes (DTC): main-sub, e.g. 07-01. The main number is also the number of MIL blinks.
+# Reply layout from HondaECU's source: after the echoed query + page come one byte, then up
+# to 3 codes as (main, sub) byte pairs; main 0 = empty slot. Pages 1..DTC_PAGES are asked.
+# HondaECU's own code list (in eculib) is no longer available, so only the sensor groups that
+# are the same across Honda PGM-FI motorcycle service manuals get a name here: always check
+# the Wave 125i service manual for the exact meaning.
+DTC_PAGES = 11
+DTC_NAMES = {
+    1: "MAP sensor",
+    7: "Engine temp sensor (ECT/EOT)",
+    8: "Throttle position sensor",
+    9: "Intake air temp sensor",
+    11: "Vehicle speed sensor",
+    12: "Injector",
+    21: "O2 sensor",
+    23: "O2 sensor heater",
+    29: "Idle air control valve",
+    54: "Bank angle sensor",
+}
+DTC_VOLTAGE_GROUPS = (1, 7, 8, 9, 54)     # sensor circuits: -1 low voltage, -2 high voltage
+
+
+def decode_dtc(d: bytes) -> list:
+    """(main, sub) codes in one page reply (payload after the echoed query + page)."""
+    return [(d[i], d[i + 1]) for i in (1, 3, 5) if i + 1 < len(d) and d[i] != 0]
+
+
+def dtc_text(main: int, sub: int) -> str:
+    name = DTC_NAMES.get(main, "unknown: see the service manual")
+    if main in DTC_VOLTAGE_GROUPS and sub in (1, 2):
+        name += ", " + ("low" if sub == 1 else "high") + " voltage"
+    return f"{main:02d}-{sub:02d}  {name}  (MIL {main} blinks)"
+
+
 def alerts(s: dict) -> set:
     """Return keys that should be shown in red."""
     bad = set()

@@ -5,17 +5,16 @@ Wakes a Honda/Keihin K-line ECU, reads the ECM ID, then polls the live-data
 tables (default 0x17 and 0x20) and prints raw bytes plus a HondaECU-style
 decode. Everything is also written to a CSV for later analysis.
 
-Only these commands can ever be sent (whitelist):
-  wake-up  FE 04 72 8C
-  init     72 05 00 F0 99
-  query    72 05 71 <table> <checksum>
-There are NO flash / EEPROM / security-access commands in this file.
+Only the messages kline.allowed() accepts can ever be sent: wake-up, init, and the read
+queries 72 05 71 (live data), 72 05 74 / 73 (current / past fault codes).
+There are NO flash / EEPROM / security-access / clear-codes commands in this file.
 
 Usage:
   pip install pyserial
   python m0_probe.py --list                      # show COM ports
   python m0_probe.py --port COM3 --seconds 30    # probe the bike
   python m0_probe.py --port COM3 --scan          # which tables exist, which bytes move
+  python m0_probe.py --port COM3 --dtc -v        # read fault codes (current and past)
   python m0_probe.py --sim --seconds 5           # test without the bike
 """
 
@@ -28,8 +27,9 @@ import time
 
 # decoding and the simulator are shared with the app (project folder = parent of tools\)
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from decode import DECODERS  # noqa: E402
-from kline import SimECU, payload  # noqa: E402
+from decode import DECODERS, dtc_text  # noqa: E402
+from kline import (INIT_MSG, WAKE_MSG, SimECU, allowed, payload, query_msg,  # noqa: E402
+                   read_dtcs)
 
 try:
     import serial
@@ -41,24 +41,7 @@ BAUD = 10400
 
 
 # ---------------------------------------------------------------- protocol --
-
-def checksum(data: bytes) -> int:
-    return (0x100 - (sum(data) & 0xFF)) & 0xFF
-
-
-def build(body: bytes) -> bytes:
-    return body + bytes([checksum(body)])
-
-
-WAKE_MSG = bytes.fromhex("FE 04 72 8C")
-INIT_MSG = bytes.fromhex("72 05 00 F0 99")
-
-
-def query_msg(table: int) -> bytes:
-    return build(bytes([0x72, 0x05, 0x71, table]))
-
-
-ALLOWED_PREFIXES = (WAKE_MSG, INIT_MSG, bytes([0x72, 0x05, 0x71]))
+# messages, checksum and the whitelist come from kline.py, shared with the app
 
 # live-data tables listed on the RE-ECU-th PGM-FI sheet (all read with the same 71 query)
 SCAN_TABLES = [0x10, 0x11, 0x13, 0x17, 0x20, 0x21, 0x60, 0x61, 0x63, 0x67, 0x70, 0x71, 0xD1]
@@ -95,7 +78,7 @@ class KLine:
         return buf
 
     def send(self, msg: bytes):
-        if not msg.startswith(ALLOWED_PREFIXES):
+        if not allowed(msg):
             raise RuntimeError("Blocked non-whitelisted command: " + msg.hex(" "))
         self.ser.reset_input_buffer()
         self.ser.write(msg)
@@ -156,6 +139,8 @@ def main():
     ap.add_argument("--scan", action="store_true",
                     help="ask every known table once, then poll the supported ones and "
                          "list the bytes that changed (ignores --tables)")
+    ap.add_argument("--dtc", action="store_true",
+                    help="read the fault codes (current and past) and stop; never clears them")
     ap.add_argument("--sim", action="store_true", help="simulated ECU (no bike)")
     ap.add_argument("-v", "--verbose", action="store_true", help="show raw TX/RX")
     args = ap.parse_args()
@@ -201,6 +186,22 @@ def main():
         r = ecu.send(query_msg(0x00))
         print("ECM ID reply:", r.hex(" ") if r else "none",
               "| ID:", payload(r, 0x00)[:5].hex(" ") if r else "-")
+
+        # 2b) fault codes only
+        if args.dtc:
+            res = read_dtcs(ecu)
+            print("\nFault code pages (payload after the echoed query + page):")
+            for line in res["raw"]:
+                print("  ", line)
+            if not res["supported"]:
+                print("\nThe ECU did not answer the fault-code queries.")
+                return
+            for key in ("current", "past"):
+                print(f"\n{key.capitalize()} faults:", "none" if not res[key] else "")
+                for main, sub in res[key]:
+                    print("  ", dtc_text(main, sub))
+            print("\nPlease send me this output.")
+            return
 
         # 2b) scan: find out which tables this ECU has
         if args.scan:

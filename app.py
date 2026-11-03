@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
                                QGridLayout, QHBoxLayout, QLabel, QMainWindow,
                                QMessageBox, QPushButton, QVBoxLayout, QWidget)
 
-from decode import FIELDS, alerts, fmt_value
+from decode import FIELDS, alerts, dtc_text, fmt_value
 from kline import list_ports
 from recorder import Recorder
 from viewer import LogViewer
@@ -124,6 +124,11 @@ class MainWindow(QMainWindow):
         r1.addWidget(self.status_lbl)
         r1.addStretch()
         r1.addWidget(self.ecm_lbl)
+        self.faults = None          # last kline.read_dtcs() result
+        self.faults_btn = QPushButton("Faults: -")
+        self.faults_btn.setToolTip("Fault codes (DTC) read from the ECU. Read only: the app never clears them.")
+        self.faults_btn.clicked.connect(self.show_faults)
+        r1.addWidget(self.faults_btn)
         root.addLayout(r1)
 
         # --- row 2: recording
@@ -225,6 +230,7 @@ class MainWindow(QMainWindow):
         self.worker.status.connect(self.set_status)
         self.worker.ecm.connect(lambda s: self.ecm_lbl.setText("ECM: " + s))
         self.worker.sample.connect(self.on_sample)
+        self.worker.faults.connect(self.on_faults)
         self.worker.start()
         self.connect_btn.setText("Disconnect")
 
@@ -232,7 +238,7 @@ class MainWindow(QMainWindow):
         """Stop a polling thread. Never drop one that is still running: Qt aborts the whole
         app then (the crash after unplugging the cable). A thread stuck on a vanished COM port
         is kept in self.stopping until it ends; its late updates no longer reach the screen."""
-        for sig in (w.status, w.ecm, w.sample):
+        for sig in (w.status, w.ecm, w.sample, w.faults):
             try:
                 sig.disconnect()
             except (RuntimeError, TypeError):
@@ -241,6 +247,46 @@ class MainWindow(QMainWindow):
         if not w.wait(3000):
             self.stopping.append(w)
             w.finished.connect(lambda: self.stopping.remove(w) if w in self.stopping else None)
+
+    # ------------------------------------------------------------ fault codes
+    def on_faults(self, res):
+        self.faults = res
+        if not res["supported"]:
+            text, color = "Faults: not readable", "#888888"
+        elif res["current"]:
+            text, color = f"Faults: {len(res['current'])} current, {len(res['past'])} past", "#e53935"
+        elif res["past"]:
+            text, color = f"Faults: {len(res['past'])} past", "#fb8c00"
+        else:
+            text, color = "Faults: none", "#43a047"
+        self.faults_btn.setText(text)
+        self.faults_btn.setStyleSheet(f"color:{color}; font-weight:bold")
+
+    def show_faults(self):
+        res = self.faults
+        if res is None:
+            body = "Not read yet: the app reads the fault codes each time it connects."
+        elif not res["supported"]:
+            body = "The ECU did not answer the fault-code queries."
+        else:
+            body = ""
+            for key, title in (("current", "Current faults"), ("past", "Past (stored) faults")):
+                body += f"<b>{title}</b><br>"
+                body += "<br>".join(dtc_text(m, s) for m, s in res[key]) if res[key] else "none"
+                body += "<br><br>"
+            body += ("<span style='color:#888'>The number before the dash is the MIL blink count. "
+                     "Names are the usual Honda PGM-FI groups: check the Wave 125i service manual. "
+                     "This app only reads codes; it never clears them.</span>")
+        box = QMessageBox(self)
+        box.setWindowTitle("Fault codes (DTC)")
+        box.setTextFormat(Qt.RichText)
+        box.setText(body)
+        again = box.addButton("Read again", QMessageBox.ActionRole) if self.worker else None
+        box.addButton(QMessageBox.Close)
+        box.exec()
+        if again is not None and box.clickedButton() is again and self.worker:
+            self.faults_btn.setText("Faults: reading…")
+            self.worker.request_faults()
 
     def set_status(self, text):
         color = "#43a047" if text.startswith("Connected") else \

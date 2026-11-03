@@ -16,7 +16,14 @@ class SimEcu : Link {
         Thread.sleep(20)
         if (msg.contentEquals(Protocol.WAKE_MSG)) return Protocol.hex("0E 04 72 7C")
         if (msg.contentEquals(Protocol.INIT_MSG)) return Protocol.INIT_OK
+        val query = msg[2].toInt() and 0xFF
         val table = msg[3].toInt() and 0xFF
+        if (query == Protocol.DTC_CURRENT || query == Protocol.DTC_PAST) {
+            // no current faults; one stored: 07-01 (engine temp sensor, low voltage), like kline.py
+            val codes = if (query == Protocol.DTC_PAST && table == 1) bytes(7, 1, 0, 0, 0, 0) else ByteArray(6)
+            val body = bytes(0x02, 12, query, table, 0) + codes
+            return body + Protocol.checksum(body).toByte()
+        }
         val t = (System.currentTimeMillis() - t0) / 1000.0
         val cyc = (sin(t / 3) + 1) / 2       // 0..1 slow throttle wave
         val data: ByteArray = when (table) {
