@@ -29,7 +29,7 @@ import android.widget.TextView
 import android.widget.Toast
 import com.hoho.android.usbserial.driver.UsbSerialProber
 
-/** Main screen: tiles or live graphs, plus Connect, Record, Marker, and Rides for recorded rides. */
+/** Main screen: tiles or live graphs, plus Connect, Record, Marker, and Read for recorded rides. */
 class MainActivity : Activity() {
     private val ui = Handler(Looper.getMainLooper())
     private val values = mutableMapOf<String, TextView>()
@@ -205,7 +205,7 @@ class MainActivity : Activity() {
         root.addView(LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
             addView(recText, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            addView(button("Rides") { startActivity(Intent(this@MainActivity, RidesActivity::class.java)) })
+            addView(button("Read") { startActivity(Intent(this@MainActivity, RidesActivity::class.java)) })
         })
         simBox = CheckBox(this).apply {
             text = "Simulator"

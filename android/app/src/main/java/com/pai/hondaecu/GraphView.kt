@@ -81,6 +81,7 @@ class GraphView(context: Context) : View(context) {
     private val title = text(13f, Color.WHITE)
     private val value = text(15f, Color.WHITE).apply { isFakeBoldText = true; textAlign = Paint.Align.RIGHT }
     private val small = text(10f, Color.parseColor("#A0A8B0"))
+    private val tagText = text(11f, Color.WHITE).apply { isFakeBoldText = true }
     private val path = Path()
     private val clock = SimpleDateFormat("HH:mm:ss", Locale.US)
 
@@ -240,7 +241,29 @@ class GraphView(context: Context) : View(context) {
         drawLine(c, s, x, y, p.width())
         line.color = color
         c.drawPath(path, line)
-        if (cur != null) c.drawLine(x(cur), p.top, x(cur), p.bottom, cursor)
+        if (cur != null) {
+            c.drawLine(x(cur), p.top, x(cur), p.bottom, cursor)
+            if (shownValue != null) drawTag(c, f, color, x(cur), y(shownValue), shownValue, p)
+        }
+    }
+
+    /**
+     * Recorded mode: a dot where the cursor crosses the line and the value next to it, like the
+     * PC viewer. The label flips left near the right edge and below near the top.
+     */
+    private fun drawTag(c: Canvas, f: Decode.Field, color: Int, px: Float, py: Float, v: Float, p: RectF) {
+        fill.color = color
+        c.drawCircle(px, py, dp(4f), fill)
+        val label = "${Decode.fmtValue(f, v.toDouble())} ${f.unit}".trim()
+        tagText.color = color
+        val w = tagText.measureText(label) + dp(10f)
+        val h = dp(18f)
+        val left = if (px + dp(8f) + w > p.right) px - dp(8f) - w else px + dp(8f)
+        val top = if (py - dp(6f) - h < p.top) py + dp(6f) else py - dp(6f) - h
+        val box = RectF(left, top, left + w, top + h)
+        fill.color = 0xE0141414.toInt()
+        c.drawRoundRect(box, dp(4f), dp(4f), fill)
+        c.drawText(label, box.left + dp(5f), box.bottom - dp(5f), tagText)
     }
 
     /**
