@@ -100,6 +100,10 @@ changes briefly and plainly). License GPL-3.0. Full background: `docs/PLAN.md`.
   Connect/Disconnect + Start Record, while recording Marker (vibrates) + Stop (long press only);
   FLAG_KEEP_SCREEN_ON while recording. `ValueFilter.DEFAULT_HIDDEN` = Mode + Gear, applied once
   on update unless something was already hidden. Built and unit-tested; not yet seen on a screen.
+  Release APK (3 Nov): `build_apk_release.bat` -> `dist\H-ECU-Logger-<version>.apk`, signed via
+  `android/keystore.properties` (gitignored; template `keystore.properties.example`) pointing to
+  Pai's keystore outside the project (`Documents\H-ECU-keys\h-ecu-release.jks`, alias `h-ecu`).
+  Never read, print or commit the keystore or its password. No minify. Raise versionCode per release.
   Don't start the emulator unless Pai asks: the window it opens from the command line doesn't fit
   Pai's display. Pai runs it from Android Studio's Device Manager.
 

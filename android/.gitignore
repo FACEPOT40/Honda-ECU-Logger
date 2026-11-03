@@ -5,3 +5,8 @@ build/
 local.properties
 *.apk
 *.aab
+
+# release signing key and its password: never commit
+keystore.properties
+*.jks
+*.keystore

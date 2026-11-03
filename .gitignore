@@ -19,3 +19,8 @@ CDM-*/
 
 # Pai's tune maps (personal, kept local)
 tune/
+
+# Android release signing key (kept outside the project anyway)
+*.jks
+*.keystore
+keystore.properties
