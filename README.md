@@ -88,6 +88,13 @@ build_exe.bat
 ```
 Output: `dist\H-ECU-Logger.exe`
 
+### Build the Windows installer (app + FTDI driver)
+Needs [Inno Setup 6](https://jrsoftware.org/isinfo.php) (`winget install JRSoftware.InnoSetup`) and FTDI's official VCP driver package from ftdichip.com, unzipped as `CDM-v2.12.36.20-WHQL-Certified` in this folder (it is not in git: it's FTDI's).
+```bat
+build_installer.bat
+```
+Output: `dist\H-ECU-Logger-Setup-<version>.exe`. It installs the app into Program Files with Start menu shortcuts and an uninstall entry, and (ticked by default) installs the FTDI cable driver with Windows' own `pnputil`. Ride logs go to `Documents\HondaECULogger\logs`.
+
 ## CSV columns
 `timestamp, elapsed_s, rpm, tps_pct, ect_c, batt_v, speed_kmh, inj_ms, ign_deg, o2_v, stft, mode_d14, neutral, gps_kmh, marker, raw_17, raw_20, raw_d1`
 

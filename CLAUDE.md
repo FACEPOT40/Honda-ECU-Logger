@@ -109,7 +109,13 @@ pip install -r requirements.txt
 python app.py            # tick Simulator -> Connect to test without the bike
 python viewer.py logs\ride_x.csv
 build_exe.bat            # dist\H-ECU-Logger.exe
+build_installer.bat      # dist\H-ECU-Logger-Setup-<version>.exe (app + FTDI driver)
 ```
+Installer (3 Nov): `installer/H-ECU-Logger.iss` (Inno Setup 6, installed with winget with Pai's OK;
+ISCC at `%LOCALAPPDATA%\Programs\Inno Setup 6`). Program Files + shortcuts + uninstall; optional
+task adds FTDI's signed driver from `CDM-v2.12.36.20-WHQL-Certified` (gitignored, FTDI's) via
+`pnputil /add-driver ... /install`; the driver stays installed on uninstall. Version comes from
+`app.VERSION`. First build 3 Nov: the .exe starts; the installer itself not yet run (needs admin).
 
 ## Bike / ECU
 Honda Wave 125i 2021, ECU 38770-K73-T61, ECM ID `01 03 3E 0D 01`. FTDI FT232R K-line cable

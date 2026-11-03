@@ -14,5 +14,8 @@ m0_log_*.csv
 *.dat
 *.exe
 
+# FTDI's VCP driver package, bundled into the installer by build_installer.bat (FTDI's, not ours)
+CDM-*/
+
 # Pai's tune maps (personal, kept local)
 tune/
