@@ -1,4 +1,6 @@
-# Honda-ECU-Logger
+# H-ECU Logger (K-line)
+
+**K-line live data logger for Honda / Keihin ECUs.**
 
 Record live ECU data from Honda/Keihin K-line motorcycles while you ride, then review the logs as graphs afterwards to check your road-tuning results.
 
@@ -81,7 +83,7 @@ The table 0x17 layout follows the RE-ECU-th PGM-FI live data sheet and was check
 ```bat
 build_exe.bat
 ```
-Output: `dist\HondaECULogger.exe`
+Output: `dist\H-ECU-Logger.exe`
 
 ## CSV columns
 `timestamp, elapsed_s, rpm, tps_pct, ect_c, batt_v, speed_kmh, inj_ms, ign_deg, o2_v, stft, mode_d14, neutral, gps_kmh, marker, raw_17, raw_20, raw_d1`

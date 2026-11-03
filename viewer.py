@@ -89,7 +89,7 @@ class LogViewer(QMainWindow):
         super().__init__()
         self.t, self.data, self.markers = load_csv(path)
         self.name = os.path.basename(path)
-        self.setWindowTitle(f"Honda ECU Logger - {self.name}")
+        self.setWindowTitle(f"H-ECU Logger - {self.name}")
         self.resize(1350, 850)
         self.plots = {}
         self.vlines = []
@@ -585,7 +585,7 @@ def main():
     try:
         w = LogViewer(path)
     except Exception as e:
-        QMessageBox.warning(None, "Honda ECU Logger", f"Could not open file:\n{e}")
+        QMessageBox.warning(None, "H-ECU Logger", f"Could not open file:\n{e}")
         return
     w.show()
     sys.exit(app.exec())

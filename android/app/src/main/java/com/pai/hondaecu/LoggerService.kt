@@ -219,7 +219,7 @@ class LoggerService : Service() {
             PendingIntent.FLAG_IMMUTABLE)
         return Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_app)
-            .setContentTitle("Honda ECU Logger")
+            .setContentTitle("H-ECU Logger")
             .setContentText(text)
             .setContentIntent(open)
             .setOngoing(true)

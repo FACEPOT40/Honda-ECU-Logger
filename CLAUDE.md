@@ -1,4 +1,10 @@
-# Honda ECU Logger: notes for Claude
+# H-ECU Logger (K-line): notes for Claude
+
+Name (3 Nov 2026, Pai's choice): **H-ECU Logger**, subtitle **K-line** (room for "K-line / CAN"
+later). Was "Honda ECU Logger". Storage names stay `HondaECULogger` on purpose (PC fallback log
+folder, viewer QSettings, phone Documents/HondaECULogger) so old rides and settings are still
+found; the Android package stays `com.pai.hondaecu` (changing it would make a separate app).
+Keep the Honda wing / Honda styling out of the branding (trademark).
 
 Windows desktop app (Python, PySide6 + pyqtgraph + pyserial) that logs live data from a
 Honda/Keihin K-line ECU and records rides to CSV. Owner: Pai (IT support, learning; explain
@@ -71,7 +77,7 @@ changes briefly and plainly). License GPL-3.0. Full background: `docs/PLAN.md`.
 pip install -r requirements.txt
 python app.py            # tick Simulator -> Connect to test without the bike
 python viewer.py logs\ride_x.csv
-build_exe.bat            # dist\HondaECULogger.exe
+build_exe.bat            # dist\H-ECU-Logger.exe
 ```
 
 ## Bike / ECU

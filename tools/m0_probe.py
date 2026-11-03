@@ -1,5 +1,5 @@
 """
-Honda ECU Logger - M0 protocol probe (READ-ONLY)
+H-ECU Logger - M0 protocol probe (READ-ONLY)
 
 Wakes a Honda/Keihin K-line ECU, reads the ECM ID, then polls the live-data
 tables (default 0x17 and 0x20) and prints raw bytes plus a HondaECU-style
@@ -130,7 +130,7 @@ def print_changes(seen):
 # -------------------------------------------------------------------- main --
 
 def main():
-    ap = argparse.ArgumentParser(description="Honda ECU Logger M0 probe (read-only)")
+    ap = argparse.ArgumentParser(description="H-ECU Logger M0 probe (read-only)")
     ap.add_argument("--port", help="COM port, e.g. COM3")
     ap.add_argument("--list", action="store_true", help="list serial ports")
     ap.add_argument("--seconds", type=float, default=20, help="how long to poll")

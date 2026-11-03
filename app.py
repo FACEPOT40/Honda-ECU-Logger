@@ -1,4 +1,4 @@
-"""Honda ECU Logger: live ECU data with graphs, Start/Stop Record to CSV.
+"""H-ECU Logger (K-line): live ECU data with graphs, Start/Stop Record to CSV.
 Read-only: it never writes to the ECU."""
 
 import bisect
@@ -21,7 +21,8 @@ from recorder import Recorder
 from viewer import LogViewer
 from worker import PollWorker
 
-APP_NAME = "Honda ECU Logger"
+APP_NAME = "H-ECU Logger"
+SUBTITLE = "K-line"
 VERSION = "0.2.0"
 
 # graph rows: (left key, right key or None, title)
@@ -101,7 +102,7 @@ def build_graphs():
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle(f"{APP_NAME} {VERSION}")
+        self.setWindowTitle(f"{APP_NAME} ({SUBTITLE}) {VERSION}")
         self.resize(1250, 800)
         self.worker = None
         self.stopping = []        # stopped polling threads that have not ended yet
@@ -205,7 +206,7 @@ class MainWindow(QMainWindow):
         about = QAction("About", self)
         about.triggered.connect(lambda: QMessageBox.information(
             self, APP_NAME,
-            f"{APP_NAME} {VERSION}\nRead-only live data logger for Honda/Keihin K-line ECUs.\n"
+            f"{APP_NAME} ({SUBTITLE}) {VERSION}\nRead-only live data logger for Honda/Keihin K-line ECUs.\n"
             "Never look at the screen while riding.\nNot affiliated with Honda Motor Co."))
         helpm.addAction(about)
 

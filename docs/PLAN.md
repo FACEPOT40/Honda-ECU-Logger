@@ -1,4 +1,6 @@
-# Honda ECU Logger: Project Plan
+# H-ECU Logger (K-line): Project Plan
+
+*(Renamed from "Honda ECU Logger" on 3 Nov 2026.)*
 
 A desktop app that reads live diagnostic data from Honda motorcycle ECUs over K-line, shows it as **numbers and real-time graphs**, and **records it to CSV** with Start / Stop Record. The goal is ride-and-review: you can't look at a screen while riding, so you record the ride and analyze the logs afterwards to check road-tuning results.
 
