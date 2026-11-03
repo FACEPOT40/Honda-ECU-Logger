@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Notification icon (white only): the H-ECU H and bolt, like ic_launcher_mono -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M12,4A10,10 0 0,0 2,14c0,2 0.6,3.9 1.6,5.5h16.8A10,10 0 0,0 22,14 10,10 0 0,0 12,4zM13.4,15.4a2,2 0 0,1 -2.8,-2.8L17,8z" />
+    android:viewportWidth="160"
+    android:viewportHeight="160">
+    <group android:translateX="-3">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M30,132L54,132L80,28L56,28Z M86,132L110,132L136,28L112,28Z M94,30L70,80L84,80L66,130L102,70L88,70L104,30Z" />
+    </group>
 </vector>

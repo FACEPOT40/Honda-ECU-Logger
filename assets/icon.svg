@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+  <!-- H-ECU Logger icon: italic H with a lightning bolt (deep blue + amber on near-black).
+       The Android icon (android/.../res/drawable/ic_launcher_*.xml) uses the same shapes. -->
+  <rect width="160" height="160" rx="36" fill="#08090c"/>
+  <polygon points="30,132 54,132 80,28 56,28" fill="#1976d2"/>
+  <polygon points="86,132 110,132 136,28 112,28" fill="#1976d2"/>
+  <polygon points="62,90 98,90 103,72 67,72" fill="#1976d2"/>
+  <polygon points="94,30 70,80 84,80 66,130 102,70 88,70 104,30" fill="#ffa000"
+           stroke="#08090c" stroke-width="4"/>
+</svg>

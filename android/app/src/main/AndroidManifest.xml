@@ -18,7 +18,8 @@
 
     <application
         android:allowBackup="false"
-        android:icon="@drawable/ic_app"
+        android:icon="@drawable/ic_launcher"
+        android:roundIcon="@drawable/ic_launcher"
         android:label="H-ECU Logger"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
 

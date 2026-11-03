@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog, 
 from decode import FIELDS, alerts, dtc_text, fmt_value
 from kline import list_ports
 from recorder import Recorder
-from viewer import LogViewer
+from viewer import LogViewer, app_icon
 from worker import PollWorker
 
 APP_NAME = "H-ECU Logger"
@@ -404,6 +404,10 @@ def main():
     pg.setConfigOptions(antialias=True)
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
+    app.setWindowIcon(app_icon())
+    if sys.platform == "win32":  # own taskbar icon, not python.exe's, when run from source
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("HECULogger.App")
     w = MainWindow()
     w.show()
     # a CSV dropped onto the .exe (or passed on the command line) opens in the viewer

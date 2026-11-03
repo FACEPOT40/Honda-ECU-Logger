@@ -12,7 +12,7 @@ import sys
 import numpy as np
 import pyqtgraph as pg
 from PySide6.QtCore import QSettings, Qt, QTimer
-from PySide6.QtGui import QBrush, QColor, QFont, QKeySequence, QShortcut
+from PySide6.QtGui import QBrush, QColor, QFont, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog, QGraphicsItem,
                                QGridLayout, QHBoxLayout, QHeaderView, QLabel, QListWidget,
                                QListWidgetItem, QMainWindow, QMessageBox,
@@ -575,9 +575,16 @@ class CellHitsWindow(QWidget):
         self.table.setCurrentCell(*cell)
 
 
+def app_icon():
+    """assets/icon.ico next to this file, or unpacked from the .exe (PyInstaller's _MEIPASS)."""
+    base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    return QIcon(os.path.join(base, "assets", "icon.ico"))
+
+
 def main():
     pg.setConfigOptions(antialias=True)
     app = QApplication(sys.argv)
+    app.setWindowIcon(app_icon())
     path = sys.argv[1] if len(sys.argv) > 1 else \
         QFileDialog.getOpenFileName(None, "Open ride log", default_log_dir(), "CSV (*.csv)")[0]
     if not path:

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One-color icon for Android's themed icons: the H's two sides plus the bolt (the bolt covers
+     the crossbar in the color icon, so leaving the bar out keeps the gap around the bolt) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.46"
+        android:scaleY="0.46"
+        android:translateX="15.82"
+        android:translateY="17.2">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M30,132L54,132L80,28L56,28Z M86,132L110,132L136,28L112,28Z M94,30L70,80L84,80L66,130L102,70L88,70L104,30Z" />
+    </group>
+</vector>

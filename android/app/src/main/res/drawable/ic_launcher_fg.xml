@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Shapes from assets/icon.svg (160 units), scaled into the 66 dp safe zone of a 108 dp icon -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.46"
+        android:scaleY="0.46"
+        android:translateX="15.82"
+        android:translateY="17.2">
+        <path
+            android:fillColor="#FF1976D2"
+            android:pathData="M30,132L54,132L80,28L56,28Z M86,132L110,132L136,28L112,28Z M62,90L98,90L103,72L67,72Z" />
+        <path
+            android:fillColor="#FFFFA000"
+            android:strokeColor="#FF08090C"
+            android:strokeWidth="4"
+            android:pathData="M94,30L70,80L84,80L66,130L102,70L88,70L104,30Z" />
+    </group>
+</vector>

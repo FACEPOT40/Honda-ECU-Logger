@@ -5,6 +5,12 @@ later). Was "Honda ECU Logger". Storage names stay `HondaECULogger` on purpose (
 folder, viewer QSettings, phone Documents/HondaECULogger) so old rides and settings are still
 found; the Android package stays `com.pai.hondaecu` (changing it would make a separate app).
 Keep the Honda wing / Honda styling out of the branding (trademark).
+Icon (3 Nov, Pai's pick "F1, deep blue + amber"): italic H (#1976d2) with an amber (#ffa000)
+lightning bolt through the crossbar, on near-black #08090c. Source `assets/icon.svg`;
+`python tools\make_icon.py` rebuilds `assets/icon.ico` (PC window/taskbar via `viewer.app_icon()`,
+and the .exe via `build_exe.bat`). Android: adaptive `res/drawable/ic_launcher*.xml` (same shapes,
+scaled 0.46 into the safe zone; `_mono` for themed icons) and the white notification icon `ic_app`.
+Keep all of them in step when the design changes.
 
 Windows desktop app (Python, PySide6 + pyqtgraph + pyserial) that logs live data from a
 Honda/Keihin K-line ECU and records rides to CSV. Owner: Pai (IT support, learning; explain
