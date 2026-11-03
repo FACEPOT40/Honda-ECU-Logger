@@ -50,6 +50,7 @@ FIELDS = [
     ("ect_c", "Eng temp", "°C", 0),
     ("batt_v", "Batt", "V", 1),
     ("speed_kmh", "Speed", "km/h", 0),
+    ("gps_kmh", "GPS speed", "km/h", 0),      # phone GPS, Android app only; empty in PC logs
     ("inj_ms", "Inj", "ms", 2),
     ("ign_deg", "Ign", "°", 1),
     ("o2_v", "O2", "V", 2),

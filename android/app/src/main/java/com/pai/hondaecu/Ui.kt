@@ -39,7 +39,7 @@ fun formatDuration(ms: Long): String {
 object Look {
     val COLORS = mapOf(
         "rpm" to "#4fc3f7", "tps_pct" to "#ffb74d", "ect_c" to "#ef5350",
-        "batt_v" to "#9ccc65", "speed_kmh" to "#ba68c8", "inj_ms" to "#4db6ac",
+        "batt_v" to "#9ccc65", "speed_kmh" to "#ba68c8", "gps_kmh" to "#7986cb", "inj_ms" to "#4db6ac",
         "ign_deg" to "#fff176", "o2_v" to "#f06292", "stft" to "#e0e0e0",
         "mode_d14" to "#90a4ae", "neutral" to "#a1887f",
     ).mapValues { Color.parseColor(it.value) }

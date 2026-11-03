@@ -25,7 +25,7 @@ KEYS = [f[0] for f in FIELDS]
 INFO = {k: (lbl, unit, dec) for k, lbl, unit, dec in FIELDS}
 COLORS = {
     "rpm": "#4fc3f7", "tps_pct": "#ffb74d", "ect_c": "#ef5350",
-    "batt_v": "#9ccc65", "speed_kmh": "#ba68c8", "inj_ms": "#4db6ac",
+    "batt_v": "#9ccc65", "speed_kmh": "#ba68c8", "gps_kmh": "#7986cb", "inj_ms": "#4db6ac",
     "ign_deg": "#fff176", "o2_v": "#f06292", "stft": "#e0e0e0",
     "mode_d14": "#90a4ae", "neutral": "#a1887f",
 }

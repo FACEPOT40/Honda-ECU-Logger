@@ -28,7 +28,7 @@ class CsvFormat {
 
     companion object {
         val VALUES = listOf("rpm", "tps_pct", "ect_c", "batt_v", "speed_kmh", "inj_ms", "ign_deg",
-            "o2_v", "stft", "mode_d14", "neutral")
+            "o2_v", "stft", "mode_d14", "neutral", "gps_kmh")
         val RAW = listOf("raw_17", "raw_20", "raw_d1")
         val HEADER = (listOf("timestamp", "elapsed_s") + VALUES + "marker" + RAW).joinToString(",")
     }

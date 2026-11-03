@@ -90,7 +90,12 @@ may look unusual.
 - **No speed** on this bike: cable-driven speedometer, no ECU sensor. d15 stayed 0 on a ride
   and in a wheel-spinning scan; the mechanic confirmed ECU-SHOP's speed is phone GPS. Pai
   wants Speed **kept** in the app anyway (shows 0 on the Wave) for other Honda bikes.
-  Idea for later: merge a phone GPS track by timestamp.
+- **GPS speed** (3 Nov, Android only): `GpsSpeed.kt` reads the phone's GPS speed (~1/s) into a
+  `gps_kmh` field and CSV column (after `neutral`, also in `decode.py` FIELDS, `recorder.py` and
+  `viewer.py` COLORS so both sides stay in step; empty in PC logs). Each sample repeats the last
+  fix; no fix for 3 s = empty. Pai chose **speed only**: never store latitude/longitude.
+  Location permission is asked at start (refusing is fine); the service adds the `location` type
+  only when it was granted. Built and unit-tested; not yet tried outdoors on the phone.
 - `m0_probe.py --scan` (24 Oct): the Wave supports only 0x17, 0x20, 0x67 (mirror of 0x17),
   0x70 (mirror of 0x20) and 0xD1 (6 bytes: d0 neutral 01 / in gear 00, d4 fuel pump 01 = on,
   d5 fan = 0x10, meaningless, no fan). The ECU only knows neutral / in gear, not which gear.

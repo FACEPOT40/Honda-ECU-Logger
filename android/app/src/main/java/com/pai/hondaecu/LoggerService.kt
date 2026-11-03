@@ -36,6 +36,7 @@ object Live {
  */
 class LoggerService : Service() {
     @Volatile private var poller: Poller? = null
+    private val gps by lazy { GpsSpeed(this) }
     private var wakeLock: PowerManager.WakeLock? = null
     private val lock = Any()
     private var writer: BufferedWriter? = null
@@ -60,9 +61,12 @@ class LoggerService : Service() {
     }
 
     private fun connect(sim: Boolean) {
-        startForeground(NOTIFICATION_ID, notification("Connecting…"),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
+        // the location type lets GPS keep working with the screen off; only if it was allowed
+        val type = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE or
+            if (gps.hasPermission()) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0
+        startForeground(NOTIFICATION_ID, notification("Connecting…"), type)
         if (poller != null) return
+        gps.start()
         wakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager)
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "HondaECU:logging").apply { acquire() }
         // A stopped poller's thread can still report once more: ignore it, or its last
@@ -88,7 +92,8 @@ class LoggerService : Service() {
         Thread(p::run, "kline-poller").start()
     }
 
-    private fun onSample(s: Map<String, Any?>) {
+    private fun onSample(ecu: Map<String, Any?>) {
+        val s = ecu + ("gps_kmh" to gps.current())     // GPS updates once a second: repeat the last speed
         Live.sample = s
         Live.history.add(s)
         synchronized(lock) {
@@ -168,6 +173,7 @@ class LoggerService : Service() {
         stopRecording()
         poller?.stop()
         synchronized(lock) { poller = null }
+        gps.stop()
         Live.connected = false
         Live.status = "Disconnected"
         Live.ecm = "-"
@@ -181,6 +187,7 @@ class LoggerService : Service() {
     override fun onDestroy() {
         poller?.stop()
         synchronized(lock) { poller = null }
+        gps.stop()
         stopRecording()
         Live.connected = false
         Live.status = "Disconnected"

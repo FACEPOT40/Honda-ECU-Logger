@@ -78,11 +78,11 @@ class DecodeTest {
     @Test
     fun csvMatchesThePcFormat() {
         assertEquals("timestamp,elapsed_s,rpm,tps_pct,ect_c,batt_v,speed_kmh,inj_ms,ign_deg,o2_v,stft," +
-            "mode_d14,neutral,marker,raw_17,raw_20,raw_d1", CsvFormat.HEADER)
+            "mode_d14,neutral,gps_kmh,marker,raw_17,raw_20,raw_d1", CsvFormat.HEADER)
         val c = CsvFormat()
         c.mark("M1")
         val row = c.row(mapOf("t" to 1_000_000L, "rpm" to 1420, "stft" to 1.0, "raw_17" to "00ff"))
-        assertTrue(row, row.endsWith(",0.000,1420,,,,,,,,1.0,,,M1,00ff,,"))
+        assertTrue(row, row.endsWith(",0.000,1420,,,,,,,,1.0,,,,M1,00ff,,"))
     }
 
     @Test

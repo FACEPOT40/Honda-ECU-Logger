@@ -20,6 +20,7 @@ object Decode {
         Field("ect_c", "Eng temp", "°C", 0),
         Field("batt_v", "Batt", "V", 1),
         Field("speed_kmh", "Speed", "km/h", 0),
+        Field("gps_kmh", "GPS speed", "km/h", 0),      // from the phone's GPS, not the ECU
         Field("inj_ms", "Inj", "ms", 2),
         Field("ign_deg", "Ign", "°", 1),
         Field("o2_v", "O2", "V", 2),
