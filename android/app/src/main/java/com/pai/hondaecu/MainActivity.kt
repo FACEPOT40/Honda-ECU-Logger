@@ -66,6 +66,8 @@ class MainActivity : Activity() {
     private lateinit var rightBtn: Button
     private var buttonsState: String? = null     // buttons are re-styled only when this changes
     private var keptOn = false
+    private var screenMode = Settings.ScreenOn.RECORDING
+    private lateinit var rootView: View
     private var simulate = false
 
     private enum class Tab { LIVE, GRAPHS, LOGS }
@@ -107,6 +109,7 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         showTiles()                 // the Filter may have changed in the ride viewer
+        screenMode = Settings.screenOn(this)
         ui.post(refresh)
     }
 
@@ -188,7 +191,8 @@ class MainActivity : Activity() {
                 isChecked = simulate
                 isEnabled = !Live.connected       // pick it before connecting
             }
-            menu.add(0, 3, 2, "About")
+            menu.add(0, 4, 2, "Settings")
+            menu.add(0, 3, 3, "About")
             setOnMenuItemClickListener {
                 when (it.itemId) {
                     1 -> ValueFilter.choose(this@MainActivity) { showTiles() }
@@ -198,6 +202,7 @@ class MainActivity : Activity() {
                         toast(if (simulate) "Simulator on: Connect uses fake data" else "Simulator off", short = true)
                     }
                     3 -> startActivity(Intent(this@MainActivity, AboutActivity::class.java))
+                    4 -> startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
                 }
                 true
             }
@@ -302,13 +307,13 @@ class MainActivity : Activity() {
                 }
             }
             rightBtn.isEnabled = on
-            // the screen stays on while recording, so the mounted phone keeps showing the values
-            if (rec != keptOn) {
-                if (rec) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                keptOn = rec
-            }
         }
+        keepScreenOn(when (screenMode) {
+            Settings.ScreenOn.RECORDING -> rec
+            Settings.ScreenOn.CONNECTED -> on
+            Settings.ScreenOn.ALWAYS -> true
+            Settings.ScreenOn.NEVER -> false
+        })
 
         if (graphPanel.visibility == View.VISIBLE) {
             graphHint.visibility = if (on) View.GONE else View.VISIBLE
@@ -327,6 +332,18 @@ class MainActivity : Activity() {
         }
     }
 
+    /** Settings → Keep screen on. Checked on every screen update (not only when recording
+     *  starts), on both the window and the view, so nothing can quietly undo it. Android only
+     *  honours it while this screen is in front. */
+    private fun keepScreenOn(keep: Boolean) {
+        if (rootView.keepScreenOn != keep) rootView.keepScreenOn = keep
+        if (keep != keptOn) {
+            if (keep) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            keptOn = keep
+        }
+    }
+
     // ------------------------------------------------------------ layout
 
     private fun buildScreen(): View {
@@ -334,6 +351,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(BACKGROUND)
         }
+        rootView = root
 
         // top bar
         statusChip = chip().apply { setOnClickListener { showConnection() } }

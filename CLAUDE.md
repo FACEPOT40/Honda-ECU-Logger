@@ -98,7 +98,10 @@ changes briefly and plainly). License GPL-3.0. Full background: `docs/PLAN.md`.
   Logs (Logs opens RidesActivity, blocked while recording); tiles share the space in rows
   (1 column up to 3 values), one number size for all (`sizeValues`, "88,888" must fit); bottom
   Connect/Disconnect + Start Record, while recording Marker (vibrates) + Stop (long press only);
-  FLAG_KEEP_SCREEN_ON while recording. `ValueFilter.DEFAULT_HIDDEN` = Mode + Gear, applied once
+  Keep screen on: Settings (⋮ → Settings, `SettingsActivity.kt`, `Settings` object) with
+  While recording (default) / While connected / Always / Never; `keepScreenOn()` re-checks it on
+  every screen update, on the view and the window (Pai saw the screen go off while recording on
+  the first version, which set the window flag only once). `ValueFilter.DEFAULT_HIDDEN` = Mode + Gear, applied once
   on update unless something was already hidden. Built and unit-tested; not yet seen on a screen.
   Release APK (3 Nov): `build_apk_release.bat` -> `dist\H-ECU-Logger-<version>.apk`, signed via
   `android/keystore.properties` (gitignored; template `keystore.properties.example`) pointing to
