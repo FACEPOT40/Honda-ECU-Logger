@@ -2,6 +2,7 @@ package com.pai.hondaecu
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -9,6 +10,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.hardware.usb.UsbDevice
@@ -17,42 +19,56 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
+import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.WindowInsets
+import android.view.WindowManager
 import android.widget.Button
-import android.widget.CheckBox
-import android.widget.GridLayout
+import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.PopupMenu
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import com.hoho.android.usbserial.driver.UsbSerialProber
 
-/** Main screen: tiles or live graphs, plus Connect, Record, Marker, and Read for recorded rides. */
+/**
+ * Main screen, made for a phone on the handlebar (portrait):
+ *  - top bar: status chip (tap: connection details), faults chip (tap: the codes), ⋮ menu
+ *    (Filter, Simulator, About)
+ *  - tabs: Live (tiles) | Graphs | Logs (recorded rides)
+ *  - tiles fill the space, so fewer values = bigger numbers
+ *  - two big buttons: Connect / Disconnect + Start Record; while recording Marker + Stop (hold)
+ */
 class MainActivity : Activity() {
     private val ui = Handler(Looper.getMainLooper())
     private val values = mutableMapOf<String, TextView>()
+    private val labels = mutableMapOf<String, TextView>()
     private val tiles = mutableMapOf<String, View>()
-    private lateinit var grid: GridLayout
-    private lateinit var valuesBtn: Button
+    private lateinit var tilesPanel: LinearLayout
     private lateinit var noTilesText: TextView
-    private lateinit var modeBtn: Button
-    private lateinit var tilesScroll: View
     private lateinit var graphPanel: View
     private lateinit var graphView: GraphView
     private lateinit var graphHint: TextView
     private val windowBtns = mutableMapOf<Int, Button>()
     private var windowMs = 30_000L
-    private lateinit var statusText: TextView
-    private lateinit var ecmText: TextView
+    private val tabs = mutableMapOf<Tab, TextView>()
+    private lateinit var statusChip: TextView
+    private lateinit var faultsChip: TextView
     private lateinit var recText: TextView
-    private lateinit var simBox: CheckBox
-    private lateinit var connectBtn: Button
-    private lateinit var recordBtn: Button
-    private var recordTone: Tone? = null     // re-styled only when recording starts or stops
-    private lateinit var markBtn: Button
-    private lateinit var faultsBtn: Button
+    private lateinit var leftBtn: Button
+    private lateinit var rightBtn: Button
+    private var buttonsState: String? = null     // buttons are re-styled only when this changes
+    private var keptOn = false
+    private var simulate = false
+
+    private enum class Tab { LIVE, GRAPHS, LOGS }
 
     private val usbReceiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
@@ -70,6 +86,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        simulate = prefs().getBoolean(KEY_SIM, false)
         setContentView(buildScreen())
         // notifications show that logging runs; location is only for GPS speed (refusing it is fine)
         val wanted = mutableListOf<String>()
@@ -89,7 +106,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        showTiles()                 // the Values choice may have changed in the ride viewer
+        showTiles()                 // the Filter may have changed in the ride viewer
         ui.post(refresh)
     }
 
@@ -98,12 +115,16 @@ class MainActivity : Activity() {
         super.onPause()
     }
 
+    private fun prefs() = getSharedPreferences(PREFS, MODE_PRIVATE)
+
+    // ------------------------------------------------------------ actions
+
     private fun onConnectClicked() {
         if (Live.connected) {
             send(LoggerService.ACTION_DISCONNECT)
             return
         }
-        if (simBox.isChecked) {
+        if (simulate) {
             startService(true)
             return
         }
@@ -117,6 +138,29 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun onLeftClicked() {
+        if (!Live.recording) {
+            onConnectClicked()
+            return
+        }
+        send(LoggerService.ACTION_MARK)
+        buzz(60)
+        toast("Marker M${Live.markers + 1}", short = true)
+    }
+
+    private fun onRightClicked() {
+        if (Live.recording) toast("Hold to stop recording", short = true)
+        else send(LoggerService.ACTION_RECORD)
+    }
+
+    /** Stop needs a long press, so a bump on the road cannot end a recording. */
+    private fun onRightHeld(): Boolean {
+        if (!Live.recording) return false
+        send(LoggerService.ACTION_STOP_RECORD)
+        buzz(150)
+        return true
+    }
+
     private fun startService(sim: Boolean) {
         startForegroundService(Intent(this, LoggerService::class.java)
             .setAction(LoggerService.ACTION_CONNECT).putExtra(LoggerService.EXTRA_SIM, sim))
@@ -126,7 +170,49 @@ class MainActivity : Activity() {
         startService(Intent(this, LoggerService::class.java).setAction(action))
     }
 
-    private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_LONG).show()
+    private fun toast(s: String, short: Boolean = false) =
+        Toast.makeText(this, s, if (short) Toast.LENGTH_SHORT else Toast.LENGTH_LONG).show()
+
+    /** A short vibration, so a marker or a stop can be felt without looking. */
+    private fun buzz(ms: Long) {
+        @Suppress("DEPRECATION")
+        (getSystemService(VIBRATOR_SERVICE) as? Vibrator)?.vibrate(
+            VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE))
+    }
+
+    private fun showMenu(anchor: View) {
+        PopupMenu(this, anchor).apply {
+            menu.add(0, 1, 0, "Filter (${ValueFilter.shown(this@MainActivity).size}/${Decode.FIELDS.size} shown)")
+            menu.add(0, 2, 1, "Simulator").apply {
+                isCheckable = true
+                isChecked = simulate
+                isEnabled = !Live.connected       // pick it before connecting
+            }
+            menu.add(0, 3, 2, "About")
+            setOnMenuItemClickListener {
+                when (it.itemId) {
+                    1 -> ValueFilter.choose(this@MainActivity) { showTiles() }
+                    2 -> {
+                        simulate = !simulate
+                        prefs().edit().putBoolean(KEY_SIM, simulate).apply()
+                        toast(if (simulate) "Simulator on: Connect uses fake data" else "Simulator off", short = true)
+                    }
+                    3 -> startActivity(Intent(this@MainActivity, AboutActivity::class.java))
+                }
+                true
+            }
+            show()
+        }
+    }
+
+    private fun showConnection() {
+        val source = if (simulate) "Simulator (fake data)" else "K-line cable (USB OTG)"
+        AlertDialog.Builder(this).setTitle("Connection")
+            .setMessage("Status: ${Live.status}\nECM ID: ${Live.ecm}\nSource: $source\n\n" +
+                "Read only: the app only reads live data and fault codes.")
+            .setPositiveButton("Close", null)
+            .show()
+    }
 
     /** Fault codes read from the ECU (read only: the app never clears them). */
     private fun showFaults() {
@@ -140,56 +226,88 @@ class MainActivity : Activity() {
             } + "\n\nThe number before the dash is the MIL blink count. Names are the usual Honda " +
                 "PGM-FI groups: check the Wave 125i service manual. This app only reads codes; it never clears them."
         }
-        val dialog = android.app.AlertDialog.Builder(this).setTitle("Fault codes (DTC)").setMessage(text)
+        val dialog = AlertDialog.Builder(this).setTitle("Fault codes (DTC)").setMessage(text)
             .setPositiveButton("Close", null)
         if (Live.connected) dialog.setNeutralButton("Read again") { _, _ -> send(LoggerService.ACTION_READ_FAULTS) }
         dialog.show()
     }
 
+    // ------------------------------------------------------------ screen updates (10 per second)
+
     private fun render() {
         val on = Live.connected
-        statusText.text = "● " + Live.status
-        statusText.setTextColor(when {
-            Live.status.startsWith("Connected") -> GREEN
-            Live.status.startsWith("Error") || Live.status.startsWith("Disconnected") -> RED
-            else -> ORANGE
-        })
-        ecmText.text = "ECM: " + Live.ecm
+        val rec = Live.recording
+
+        val (label, color) = when {
+            !on -> "Not connected" to GREY
+            Live.status.startsWith("Connected") -> (if (simulate) "Sim" else "ECU") to GREEN
+            Live.status.startsWith("Error") || Live.status.startsWith("Disconnected") -> "Error" to RED
+            else -> "Connecting…" to ORANGE
+        }
+        statusChip.text = SpannableString("● $label").apply {
+            setSpan(ForegroundColorSpan(color), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+
         val f = Live.faults
-        faultsBtn.text = when {
-            !on -> "Faults"
-            f == null -> "Faults…"
-            !f.supported -> "Faults ?"
-            f.current.isNotEmpty() -> "Faults ${f.current.size}+${f.past.size}"
-            f.past.isNotEmpty() -> "Faults (${f.past.size} past)"
-            else -> "No faults"
+        faultsChip.visibility = if (on) View.VISIBLE else View.GONE
+        val n = (f?.current?.size ?: 0) + (f?.past?.size ?: 0)
+        val (ftext, fcolor) = when {
+            f == null -> "Faults…" to GREY
+            !f.supported -> "Faults ?" to GREY
+            f.current.isNotEmpty() -> "$n fault${if (n > 1) "s" else ""}" to RED
+            f.past.isNotEmpty() -> "$n past" to ORANGE
+            else -> "No faults" to GREEN
         }
-        faultsBtn.setTextColor(when {
-            f == null || !on || !f.supported -> Look.TEXT
-            f.current.isNotEmpty() -> RED
-            f.past.isNotEmpty() -> ORANGE
-            else -> GREEN
-        })
-        connectBtn.text = if (on) "Disconnect" else "Connect"
-        simBox.isEnabled = !on
-        recordBtn.isEnabled = on
-        val recLook = if (Live.recording) Tone.STOP else Tone.RECORD
-        if (recLook != recordTone) {
-            recordBtn.tone(recLook)
-            recordTone = recLook
-        }
-        recordBtn.text = if (Live.recording) "■ Stop" else "● Start Record"
-        markBtn.isEnabled = Live.recording
-        recText.setTextColor(if (Live.recordError.isEmpty() && Live.recording) RED else GREY)
+        faultsChip.text = ftext
+        faultsChip.setTextColor(fcolor)
+        (faultsChip.background as GradientDrawable).setStroke(dp(1), fcolor)
+
+        tabs.getValue(Tab.LOGS).alpha = if (rec) 0.35f else 1f
+
+        recText.setTextColor(if (Live.recordError.isEmpty() && rec) RED else GREY)
+        recText.textSize = if (rec) 22f else 12f
         recText.text = when {
             Live.recordError.isNotEmpty() -> Live.recordError
-            Live.recording -> {
+            rec -> {
                 val el = (System.currentTimeMillis() - Live.recordingStart) / 1000
-                "● REC %02d:%02d  %s".format(el / 60, el % 60, Live.recordingFile)
+                val m = Live.markers
+                "● REC %02d:%02d  ·  %d marker%s".format(el / 60, el % 60, m, if (m == 1) "" else "s")
             }
             Live.recordingFile.isNotEmpty() -> "Saved " + Live.recordingFile
             else -> ""
         }
+        recText.visibility = if (recText.text.isEmpty()) View.GONE else View.VISIBLE
+
+        val state = when {
+            rec -> "rec"
+            on -> "on"
+            else -> "off"
+        }
+        if (state != buttonsState) {
+            buttonsState = state
+            when (state) {
+                "rec" -> {
+                    leftBtn.text = "⚑ Marker"
+                    leftBtn.tone(Tone.RECORD)
+                    rightBtn.text = "■ Stop (hold)"
+                    rightBtn.tone(Tone.STOP)
+                }
+                else -> {
+                    leftBtn.text = if (on) "Disconnect" else "Connect"
+                    leftBtn.tone(if (on) Tone.PLAIN else Tone.PRIMARY)
+                    rightBtn.text = "● Start Record"
+                    rightBtn.tone(Tone.RECORD)
+                }
+            }
+            rightBtn.isEnabled = on
+            // the screen stays on while recording, so the mounted phone keeps showing the values
+            if (rec != keptOn) {
+                if (rec) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                keptOn = rec
+            }
+        }
+
         if (graphPanel.visibility == View.VISIBLE) {
             graphHint.visibility = if (on) View.GONE else View.VISIBLE
             graphView.visibility = if (on) View.VISIBLE else View.GONE
@@ -200,99 +318,171 @@ class MainActivity : Activity() {
         }
         val s = if (on) Live.sample else emptyMap()     // never show old numbers as if live
         val bad = Decode.alerts(s)
-        for (f in Decode.FIELDS) {
-            val t = values.getValue(f.key)
-            t.text = Decode.fmtValue(f, s[f.key])
-            t.setTextColor(if (f.key in bad) RED else Color.WHITE)
+        for (fld in Decode.FIELDS) {
+            val t = values.getValue(fld.key)
+            t.text = Decode.fmtValue(fld, s[fld.key])
+            t.setTextColor(if (fld.key in bad) RED else Color.WHITE)
         }
     }
+
+    // ------------------------------------------------------------ layout
 
     private fun buildScreen(): View {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(BACKGROUND)
-            setPadding(dp(12), dp(12), dp(12), dp(12))
         }
-        statusText = text(14f, ORANGE)
-        ecmText = text(12f, GREY)
-        val heading = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(statusText)
-            addView(ecmText)
-        }
-        valuesBtn = button("Values") { ValueFilter.choose(this) { showTiles() } }
-        modeBtn = button("Graphs") { setGraphMode(graphPanel.visibility != View.VISIBLE) }
-        root.addView(LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            addView(heading, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            addView(modeBtn)
-            addView(valuesBtn)
-            addView(button("ⓘ") { startActivity(Intent(this@MainActivity, AboutActivity::class.java)) })
-        })
 
-        for (f in Decode.FIELDS) tiles[f.key] = tile(f)
-        grid = GridLayout(this).apply { columnCount = 2 }
-        noTilesText = text(14f, GREY).apply {
-            text = "All values are hidden. They are still recorded."
+        // top bar
+        statusChip = chip().apply { setOnClickListener { showConnection() } }
+        faultsChip = chip().apply { setOnClickListener { showFaults() } }
+        val menuBtn = text(24f, GREY).apply {
+            text = "⋮"
             gravity = Gravity.CENTER
-            setPadding(dp(12), dp(32), dp(12), dp(32))
+            setOnClickListener { showMenu(this) }
         }
-        root.addView(noTilesText)
-        tilesScroll = ScrollView(this).apply { addView(grid) }
-        root.addView(tilesScroll, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
-        root.addView(buildGraphPanel(), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
-        showTiles()
-        setGraphMode(getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_GRAPHS, false))
-
-        recText = text(12f, GREY)
         root.addView(LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
-            addView(recText, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            faultsBtn = button("Faults") { showFaults() }
-            addView(faultsBtn)
-            addView(button("Read") { startActivity(Intent(this@MainActivity, RidesActivity::class.java)) })
+            addView(text(20f, TEXT).apply {
+                text = "H-ECU"
+                setTypeface(typeface, Typeface.BOLD)
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                .apply { marginEnd = dp(10) })
+            addView(statusChip)
+            addView(faultsChip, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(6) })
+            addView(View(this@MainActivity), LinearLayout.LayoutParams(0, 1, 1f))
+            addView(menuBtn, LinearLayout.LayoutParams(dp(44), dp(44)))
         })
-        simBox = CheckBox(this).apply {
-            text = "Simulator"
-            setTextColor(GREY)
-            buttonTintList = android.content.res.ColorStateList.valueOf(Look.BLUE)
+
+        // tabs
+        val tabRow = LinearLayout(this).apply {
+            setPadding(dp(3), dp(3), dp(3), dp(3))
+            background = GradientDrawable().apply {
+                setColor(TILE)
+                cornerRadius = dp(10).toFloat()
+            }
         }
-        connectBtn = uiButton("Connect", Tone.PRIMARY) { onConnectClicked() }
-        root.addView(row(simBox, connectBtn))
-        recordBtn = button("● Start Record") {
-            send(if (Live.recording) LoggerService.ACTION_STOP_RECORD else LoggerService.ACTION_RECORD)
+        for ((tab, name) in listOf(Tab.LIVE to "Live", Tab.GRAPHS to "Graphs", Tab.LOGS to "Logs")) {
+            tabs[tab] = text(16f, GREY).apply {
+                text = name
+                gravity = Gravity.CENTER
+                setPadding(0, dp(9), 0, dp(9))
+                setOnClickListener { onTab(tab) }
+            }.also { tabRow.addView(it, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)) }
         }
-        markBtn = button("⚑ Marker") {
-            send(LoggerService.ACTION_MARK)
-            toast("Marker added")
+        root.addView(tabRow, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT).apply { setMargins(0, dp(6), 0, dp(8)) })
+
+        // tiles or graphs
+        for (f in Decode.FIELDS) tiles[f.key] = tile(f)
+        tilesPanel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> sizeValues() }
         }
-        root.addView(row(recordBtn, markBtn))
+        noTilesText = text(14f, GREY).apply {
+            text = "All values are filtered out. They are still recorded: ⋮ → Filter."
+            gravity = Gravity.CENTER
+        }
+        val content = FrameLayout(this).apply {
+            addView(tilesPanel)
+            addView(noTilesText)
+            addView(buildGraphPanel())
+        }
+        root.addView(content, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+
+        // recording line and the two big buttons
+        recText = text(12f, GREY).apply {
+            gravity = Gravity.CENTER
+            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+            setPadding(0, dp(6), 0, dp(2))
+        }
+        root.addView(recText)
+        leftBtn = uiButton("Connect", Tone.PRIMARY) { onLeftClicked() }
+        rightBtn = uiButton("● Start Record", Tone.RECORD) { onRightClicked() }.apply {
+            setOnLongClickListener { onRightHeld() }
+        }
+        root.addView(LinearLayout(this).apply {
+            for (b in listOf(leftBtn, rightBtn)) {
+                b.textSize = 18f
+                b.setTypeface(b.typeface, Typeface.BOLD)
+                addView(b, LinearLayout.LayoutParams(0, dp(72), 1f))
+            }
+        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            .apply { topMargin = dp(4) })
+
+        showTiles()
+        onTab(if (prefs().getBoolean(KEY_GRAPHS, false)) Tab.GRAPHS else Tab.LIVE)
 
         // Android 15+ draws under the system bars: keep the content clear of them
         root.setOnApplyWindowInsetsListener { v, insets ->
             val b = insets.getInsets(WindowInsets.Type.systemBars())
-            v.setPadding(dp(12), b.top + dp(8), dp(12), b.bottom + dp(8))
+            v.setPadding(dp(12), b.top + dp(4), dp(12), b.bottom + dp(8))
             insets
         }
         return root
     }
 
-    /** Only changes which tiles are on screen: polling and the CSV never look at this. */
+    private fun onTab(tab: Tab) {
+        if (tab == Tab.LOGS) {
+            if (Live.recording) toast("Stop recording first, then open the logs.", short = true)
+            else startActivity(Intent(this, RidesActivity::class.java))
+            return
+        }
+        val graphs = tab == Tab.GRAPHS
+        graphPanel.visibility = if (graphs) View.VISIBLE else View.GONE
+        tilesPanel.visibility = if (graphs) View.GONE else View.VISIBLE
+        noTilesText.visibility = if (!graphs && ValueFilter.shown(this).isEmpty()) View.VISIBLE else View.GONE
+        for ((t, v) in tabs) {
+            val chosen = t == tab
+            v.setTextColor(if (chosen) Color.WHITE else GREY)
+            v.background = if (chosen) GradientDrawable().apply {
+                setColor(BLUE)
+                cornerRadius = dp(8).toFloat()
+            } else null
+        }
+        prefs().edit().putBoolean(KEY_GRAPHS, graphs).apply()
+    }
+
+    /** Only changes which tiles are on screen: polling and the CSV never look at this.
+     *  The shown tiles share the space, so fewer values get bigger numbers (1 column up to 3). */
     private fun showTiles() {
         val shown = ValueFilter.shown(this)
-        grid.removeAllViews()
-        for (f in shown) grid.addView(tiles.getValue(f.key), GridLayout.LayoutParams(
-            GridLayout.spec(GridLayout.UNDEFINED), GridLayout.spec(GridLayout.UNDEFINED, 1f)).apply {
-            width = 0
-            setMargins(dp(4), dp(4), dp(4), dp(4))
-        })
+        tilesPanel.removeAllViews()
+        for (t in tiles.values) (t.parent as? LinearLayout)?.removeView(t)
+        val cols = if (shown.size <= 3) 1 else 2
+        for (row in shown.chunked(cols)) {
+            val line = LinearLayout(this)
+            for (f in row) line.addView(tiles.getValue(f.key), LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.MATCH_PARENT, 1f).apply { setMargins(dp(4), dp(4), dp(4), dp(4)) })
+            if (row.size < cols) line.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+            tilesPanel.addView(line, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        }
+        val big = shown.size <= 4
+        for (l in labels.values) l.textSize = if (big) 18f else 13f
         graphView.fields = shown
-        noTilesText.visibility = if (shown.isEmpty()) View.VISIBLE else View.GONE
-        valuesBtn.text = "Values ${shown.size}/${Decode.FIELDS.size}"
+        if (tilesPanel.visibility == View.VISIBLE) noTilesText.visibility = if (shown.isEmpty()) View.VISIBLE else View.GONE
+        tilesPanel.post { sizeValues() }
+    }
+
+    /** One number size for every tile, as big as the tiles allow ("88,888" must fit). */
+    private fun sizeValues() {
+        val tile = ValueFilter.shown(this).firstOrNull()?.let { tiles[it.key] } ?: return
+        val w = tile.width - dp(24)
+        val h = tile.height - dp(16) - (labels.values.first().height)
+        if (w <= 0 || h <= 0) return
+        val paint = Paint().apply {
+            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+            textSize = 100f
+        }
+        val byWidth = 100f * w / paint.measureText("88,888")
+        val px = minOf(byWidth, h * 0.85f, dp(120).toFloat())
+        for (v in values.values) {
+            if (v.textSize != px) v.setTextSize(TypedValue.COMPLEX_UNIT_PX, px)
+        }
     }
 
     private fun buildGraphPanel(): View {
-        val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
         graphView = GraphView(this).apply {
             colors = COLORS
             tileColor = TILE
@@ -307,9 +497,9 @@ class MainActivity : Activity() {
         windowRow.addView(text(12f, GREY).apply { text = "Window" },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         for (sec in intArrayOf(10, 30, 60)) {
-            windowBtns[sec] = button("$sec s") { setWindow(sec) }.also { windowRow.addView(it) }
+            windowBtns[sec] = uiButton("$sec s") { setWindow(sec) }.also { windowRow.addView(it) }
         }
-        setWindow(prefs.getInt(KEY_WINDOW, 30))
+        setWindow(prefs().getInt(KEY_WINDOW, 30))
         graphPanel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             addView(windowRow)
@@ -320,18 +510,10 @@ class MainActivity : Activity() {
         return graphPanel
     }
 
-    /** Graphs only change the screen: polling and the CSV are the same in both modes. */
-    private fun setGraphMode(on: Boolean) {
-        graphPanel.visibility = if (on) View.VISIBLE else View.GONE
-        tilesScroll.visibility = if (on) View.GONE else View.VISIBLE
-        modeBtn.text = if (on) "Tiles" else "Graphs"
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_GRAPHS, on).apply()
-    }
-
     private fun setWindow(sec: Int) {
         windowMs = sec * 1000L
         for ((s, b) in windowBtns) b.tone(if (s == sec) Tone.PRIMARY else Tone.PLAIN)
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putInt(KEY_WINDOW, sec).apply()
+        prefs().edit().putInt(KEY_WINDOW, sec).apply()
         graphView.invalidate()
     }
 
@@ -339,7 +521,8 @@ class MainActivity : Activity() {
         val color = COLORS.getValue(f.key)
         val value = text(30f, Color.WHITE).apply {
             typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
-            gravity = Gravity.END
+            gravity = Gravity.END or Gravity.CENTER_VERTICAL
+            maxLines = 1
             text = "-"
         }
         values[f.key] = value
@@ -349,10 +532,15 @@ class MainActivity : Activity() {
                 cornerRadius = dp(2).toFloat()
             }
         }
+        val name = text(13f, color).apply {
+            text = f.title
+            maxLines = 1
+        }
+        labels[f.key] = name
         val label = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
             addView(swatch, LinearLayout.LayoutParams(dp(12), dp(12)).apply { marginEnd = dp(6) })
-            addView(text(13f, color).apply { text = f.title })
+            addView(name)
         }
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -363,17 +551,18 @@ class MainActivity : Activity() {
                 cornerRadius = dp(10).toFloat()
             }
             addView(label)
-            addView(value)
+            addView(value, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         }
     }
 
-    private fun row(a: View, b: View) = LinearLayout(this).apply {
-        gravity = Gravity.CENTER_VERTICAL
-        addView(a, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        addView(b, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+    private fun chip() = text(13f, TEXT).apply {
+        setPadding(dp(10), dp(5), dp(10), dp(5))
+        background = GradientDrawable().apply {
+            setColor(TILE)
+            setStroke(dp(1), Look.LINE)
+            cornerRadius = dp(14).toFloat()
+        }
     }
-
-    private fun button(label: String, onClick: () -> Unit) = uiButton(label, onClick = onClick)
 
     private fun text(size: Float, color: Int) = TextView(this).apply {
         textSize = size
@@ -387,10 +576,13 @@ class MainActivity : Activity() {
         private const val PREFS = ValueFilter.PREFS
         private const val KEY_GRAPHS = "show_graphs"
         private const val KEY_WINDOW = "graph_window_s"
+        private const val KEY_SIM = "simulator"
         private val COLORS = Look.COLORS
         private val BACKGROUND = Look.BACKGROUND
         private val TILE = Look.TILE
         private val GREY = Look.GREY
+        private val TEXT = Look.TEXT
+        private val BLUE = Look.BLUE
         private val GREEN = Look.GREEN
         private val ORANGE = Look.ORANGE
         private val RED = Look.RED

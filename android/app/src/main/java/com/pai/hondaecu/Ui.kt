@@ -96,9 +96,21 @@ object Look {
 object ValueFilter {
     const val PREFS = "screen"
     private const val KEY_HIDDEN = "hidden_values"
+    private const val KEY_DEFAULTS = "filter_defaults_v1"
 
-    fun hidden(c: Context): Set<String> =
-        c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getStringSet(KEY_HIDDEN, null) ?: emptySet()
+    /** Hidden until the rider shows them: Mode (d14) never changes on the Wave, Gear is only N / in gear. */
+    val DEFAULT_HIDDEN = setOf("mode_d14", "neutral")
+
+    fun hidden(c: Context): Set<String> {
+        val prefs = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (!prefs.getBoolean(KEY_DEFAULTS, false)) {
+            // once, on updating to 0.3: apply the default unless the rider already hid something
+            val edit = prefs.edit().putBoolean(KEY_DEFAULTS, true)
+            if (prefs.getStringSet(KEY_HIDDEN, null).isNullOrEmpty()) edit.putStringSet(KEY_HIDDEN, DEFAULT_HIDDEN)
+            edit.apply()
+        }
+        return prefs.getStringSet(KEY_HIDDEN, null) ?: DEFAULT_HIDDEN
+    }
 
     fun shown(c: Context): List<Decode.Field> = hidden(c).let { h -> Decode.FIELDS.filter { it.key !in h } }
 
@@ -111,7 +123,7 @@ object ValueFilter {
             onChanged()
         }
         AlertDialog.Builder(c)
-            .setTitle("Values to show (all are still recorded)")
+            .setTitle("Filter: values to show (all are still recorded)")
             .setMultiChoiceItems(Array(fields.size) { fields[it].title }, checked) { _, i, on -> checked[i] = on }
             .setPositiveButton("OK") { _, _ ->
                 save(fields.filterIndexed { i, _ -> !checked[i] }.map { it.key }.toSet())

@@ -89,6 +89,15 @@ changes briefly and plainly). License GPL-3.0. Full background: `docs/PLAN.md`.
   >= 120 °C, battery low, GPS speed, O2 lean share, 3 leanest cells), `CellsActivity` +
   `CellGridView` (drag-scroll grid with sticky RPM/TPS headers, tap for details) for the range in
   view; `OpenRide` shares the loaded ride. The viewer's cursor line also names the map cell.
+  Main screen redesign (3 Nov, v0.3.0, Pai's choices: phone upright on the handlebar, tabs on
+  top, record at the bottom, tiles stay while recording, separate Connect and Record buttons,
+  "Logs" not "Rides", "Filter" not "Values"): top bar "H-ECU" + status chip (tap: status, ECM ID,
+  source) + faults chip (tap: codes) + ⋮ (Filter, Simulator (saved), About); tabs Live | Graphs |
+  Logs (Logs opens RidesActivity, blocked while recording); tiles share the space in rows
+  (1 column up to 3 values), one number size for all (`sizeValues`, "88,888" must fit); bottom
+  Connect/Disconnect + Start Record, while recording Marker (vibrates) + Stop (long press only);
+  FLAG_KEEP_SCREEN_ON while recording. `ValueFilter.DEFAULT_HIDDEN` = Mode + Gear, applied once
+  on update unless something was already hidden. Built and unit-tested; not yet seen on a screen.
   Don't start the emulator unless Pai asks: the window it opens from the command line doesn't fit
   Pai's display. Pai runs it from Android Studio's Device Manager.
 

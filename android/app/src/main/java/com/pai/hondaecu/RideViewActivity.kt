@@ -36,7 +36,7 @@ class RideViewActivity : Activity() {
             padForSystemBars()
         }
         info = uiText(12f, Look.GREY, "Loading…")
-        valuesBtn = uiButton("Values") { ValueFilter.choose(this) { showFields() } }
+        valuesBtn = uiButton("Filter") { ValueFilter.choose(this) { showFields() } }
         root.addView(LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
             addView(LinearLayout(this@RideViewActivity).apply {
@@ -104,7 +104,7 @@ class RideViewActivity : Activity() {
     private fun showFields() {
         val shown = ValueFilter.shown(this)
         graph.fields = shown
-        valuesBtn.text = "Values ${shown.size}/${Decode.FIELDS.size}"
+        valuesBtn.text = "Filter ${shown.size}/${Decode.FIELDS.size}"
     }
 
     private fun updateCursorText() {

@@ -15,7 +15,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Recorded rides on this phone (Documents/HondaECULogger, newest first), plus "Open other file"
+ * The Logs tab: recorded rides on this phone (Documents/HondaECULogger, newest first), plus "Open other file"
  * for a CSV copied from the laptop. Tapping one opens it in RideViewActivity.
  */
 class RidesActivity : Activity() {
@@ -30,7 +30,7 @@ class RidesActivity : Activity() {
         }
         root.addView(LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
-            addView(uiText(18f, Look.GREY, "Recorded rides"),
+            addView(uiText(18f, Look.GREY, "Recorded logs"),
                 LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
             addView(uiButton("Open other file") { pickFile() })
         })

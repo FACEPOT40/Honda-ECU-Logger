@@ -27,6 +27,7 @@ object Live {
     @Volatile var recordingFile = ""
     @Volatile var recordingStart = 0L
     @Volatile var recordError = ""
+    @Volatile var markers = 0                   // markers in the current recording
     val history = History()                     // for the live graphs only
     @Volatile var faults: Protocol.Faults? = null   // fault codes read after connecting / on request
 }
@@ -140,6 +141,7 @@ class LoggerService : Service() {
                 }
                 csv = CsvFormat()
                 markerN = 0
+                Live.markers = 0
                 Live.recordError = ""
                 Live.recordingFile = "Documents/HondaECULogger/$name"
                 Live.recordingStart = System.currentTimeMillis()
@@ -171,6 +173,7 @@ class LoggerService : Service() {
                 val label = "M${++markerN}"
                 csv?.mark(label)
                 Live.history.mark(System.currentTimeMillis(), label)
+                Live.markers = markerN
             }
         }
     }

@@ -40,12 +40,15 @@ There are two apps in this repo, recording the same CSV format:
 ## Android app
 A recorder for the phone, so you don't have to carry the laptop on rides. Built and tested in the emulator; first run on a real phone and bike still to come.
 
-- Live **tiles** in the same colors as the PC app, or live **graphs** (10 / 30 / 60 s), with a *Values* filter to hide what you don't need (hidden values are still recorded)
-- **Start / Stop Record** and **Marker**, saving the same CSV as the PC app (Documents/HondaECULogger on the phone), so phone rides open in the PC viewer
+Made for a phone on the handlebar (portrait):
+- Tabs **Live | Graphs | Logs**. Live **tiles** in the same colors as the PC app fill the screen, so the fewer values you show, the bigger the numbers; or live **graphs** (10 / 30 / 60 s)
+- **Filter** (⋮ menu) picks the values on screen; Mode and Gear are hidden by default. Hidden values are still recorded
+- Two big buttons: **Connect** and **Start Record**. While recording they become **⚑ Marker** (the phone buzzes) and **■ Stop**, which needs a long press so a bump can't end the recording. The screen stays on while recording
+- Saves the same CSV as the PC app (Documents/HondaECULogger on the phone), so phone rides open in the PC viewer
 - **GPS speed** from the phone (speed only, location is never stored), in the `gps_kmh` column
-- **Read**: open a recorded ride (from the phone or the laptop) with zoomable graphs and a cursor, a **ride summary** and a **map cell table** (landscape)
-- **Faults** button for fault codes, like the PC app
-- Keeps recording with the screen off (foreground service)
+- **Logs**: open a recorded ride (from the phone or the laptop) with zoomable graphs and a cursor, a **ride summary** and a **map cell table** (landscape)
+- Status and fault-code chips at the top (tap for details); Simulator and About in the ⋮ menu
+- Keeps recording with the screen off too (foreground service)
 
 What you need: an Android phone with USB OTG, an **OTG adapter** (USB-C to USB-A) and the same FTDI K-line cable. **No driver to install**: the app talks to the FTDI chip itself. On the first connect Android asks to allow the app to use the USB device; press Allow.
 
