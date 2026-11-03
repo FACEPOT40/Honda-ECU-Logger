@@ -1,6 +1,8 @@
 package com.pai.hondaecu
 
 import android.Manifest
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.app.Activity
 import android.app.AlertDialog
 import android.app.PendingIntent
@@ -68,6 +70,11 @@ class MainActivity : Activity() {
     private var keptOn = false
     private var screenMode = Settings.ScreenOn.RECORDING
     private lateinit var rootView: View
+    private lateinit var redOverlay: View
+    private var redPulse: ObjectAnimator? = null
+    private var limits: Map<String, Alerts.Limit> = emptyMap()
+    private var o2Rule = true
+    private var redScreen = true
     private var simulate = false
 
     private enum class Tab { LIVE, GRAPHS, LOGS }
@@ -110,6 +117,9 @@ class MainActivity : Activity() {
         super.onResume()
         showTiles()                 // the Filter may have changed in the ride viewer
         screenMode = Settings.screenOn(this)
+        limits = Alerts.limits(this)
+        o2Rule = Alerts.o2Lean(this)
+        redScreen = Alerts.redScreen(this)
         ui.post(refresh)
     }
 
@@ -324,7 +334,8 @@ class MainActivity : Activity() {
             graphView.invalidate()
         }
         val s = if (on) Live.sample else emptyMap()     // never show old numbers as if live
-        val bad = Decode.alerts(s)
+        val bad = Alerts.check(s, limits, o2Rule)
+        flashRed(redScreen && bad.isNotEmpty())
         for (fld in Decode.FIELDS) {
             val t = values.getValue(fld.key)
             t.text = Decode.fmtValue(fld, s[fld.key])
@@ -341,6 +352,23 @@ class MainActivity : Activity() {
             if (keep) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             keptOn = keep
+        }
+    }
+
+    /** Settings → Red screen on alerts: the whole screen fades in and out red while a value is red. */
+    private fun flashRed(on: Boolean) {
+        if (on == (redPulse != null)) return
+        if (on) {
+            redPulse = ObjectAnimator.ofFloat(redOverlay, View.ALPHA, 0f, 0.35f).apply {
+                duration = 700
+                repeatCount = ValueAnimator.INFINITE
+                repeatMode = ValueAnimator.REVERSE
+                start()
+            }
+        } else {
+            redPulse?.cancel()
+            redPulse = null
+            redOverlay.animate().alpha(0f).setDuration(300).start()
         }
     }
 
@@ -440,7 +468,17 @@ class MainActivity : Activity() {
             v.setPadding(dp(12), b.top + dp(4), dp(12), b.bottom + dp(8))
             insets
         }
-        return root
+        // red layer over everything for alerts; it never takes touches
+        redOverlay = View(this).apply {
+            setBackgroundColor(RED)
+            alpha = 0f
+            isClickable = false
+            isFocusable = false
+        }
+        return FrameLayout(this).apply {
+            addView(root)
+            addView(redOverlay)
+        }
     }
 
     private fun onTab(tab: Tab) {

@@ -45,6 +45,10 @@ class LoggerService : Service() {
     private var csv: CsvFormat? = null
     private var markerN = 0
     private var lastFlush = 0L
+    // Settings → Auto-start / Auto-stop recording (both off by default)
+    private var engineWasRunning = false
+    private var ranSinceRecord = false
+    private var engineOffSince = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -95,6 +99,7 @@ class LoggerService : Service() {
         )
         poller = p
         Live.history.clear()
+        engineWasRunning = false
         Live.connected = true
         Thread(p::run, "kline-poller").start()
     }
@@ -103,6 +108,7 @@ class LoggerService : Service() {
         val s = ecu + ("gps_kmh" to gps.current())     // GPS updates once a second: repeat the last speed
         Live.sample = s
         Live.history.add(s)
+        autoRecord(s)
         synchronized(lock) {
             val w = writer ?: return
             try {
@@ -142,6 +148,7 @@ class LoggerService : Service() {
                 csv = CsvFormat()
                 markerN = 0
                 Live.markers = 0
+                ranSinceRecord = false
                 Live.recordError = ""
                 Live.recordingFile = "Documents/HondaECULogger/$name"
                 Live.recordingStart = System.currentTimeMillis()
@@ -151,6 +158,23 @@ class LoggerService : Service() {
             }
         }
         updateNotification()
+    }
+
+    /** Auto-start when the engine starts (not again after a manual stop until it restarts);
+     *  auto-stop once the engine has run in this recording and then been off for N seconds. */
+    private fun autoRecord(s: Map<String, Any?>) {
+        val running = ((s["rpm"] as Number?)?.toDouble() ?: 0.0) > ENGINE_RPM
+        val now = System.currentTimeMillis()
+        if (running) {
+            engineOffSince = 0L
+            if (!engineWasRunning && !Live.recording && Settings.autoStart(this)) startRecording()
+            if (Live.recording) ranSinceRecord = true
+        } else {
+            if (engineOffSince == 0L) engineOffSince = now
+            val after = Settings.autoStopSeconds(this)
+            if (Live.recording && ranSinceRecord && after > 0 && now - engineOffSince >= after * 1000L) stopRecording()
+        }
+        engineWasRunning = running
     }
 
     private fun stopRecording() {
@@ -235,6 +259,7 @@ class LoggerService : Service() {
         const val ACTION_RECORD = "record"
         const val ACTION_STOP_RECORD = "stop_record"
         const val ACTION_MARK = "mark"
+        private const val ENGINE_RPM = 500.0      // above this the engine counts as running
         const val ACTION_READ_FAULTS = "read_faults"
         const val EXTRA_SIM = "sim"
         private const val CHANNEL = "logging"

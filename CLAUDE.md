@@ -98,10 +98,16 @@ changes briefly and plainly). License GPL-3.0. Full background: `docs/PLAN.md`.
   Logs (Logs opens RidesActivity, blocked while recording); tiles share the space in rows
   (1 column up to 3 values), one number size for all (`sizeValues`, "88,888" must fit); bottom
   Connect/Disconnect + Start Record, while recording Marker (vibrates) + Stop (long press only);
-  Keep screen on: Settings (⋮ → Settings, `SettingsActivity.kt`, `Settings` object) with
-  While recording (default) / While connected / Always / Never; `keepScreenOn()` re-checks it on
-  every screen update, on the view and the window (Pai saw the screen go off while recording on
-  the first version, which set the window flag only once). `ValueFilter.DEFAULT_HIDDEN` = Mode + Gear, applied once
+  Settings (⋮ → Settings, `SettingsActivity.kt`; `Settings` object + `Alerts.kt`), Pai's choices
+  3 Nov: Keep screen on (While connected = default, since the screen went off while only
+  monitoring; also While recording / Always / Never; `keepScreenOn()` re-checks every update).
+  Alert limits per value (`AlertLimitsActivity`): low and / or high, red at or beyond; defaults =
+  the old fixed rules (ECT >= 120, battery <= 12.5 only above 1,500 rpm); O2 lean rule as its own
+  switch. "Red screen on alerts": the whole screen fades red (no sound / vibration: Pai said no).
+  Phone only: the PC keeps decode.alerts(). Auto-start recording (on engine start, not again after
+  a manual stop until it restarts) and auto-stop (10/30/60 s engine off, only after the engine ran
+  in that recording), both OFF by default, run in `LoggerService.autoRecord` (works screen-off).
+  `AlertsTest` covers the limits. Built and unit-tested; not yet seen on the phone. `ValueFilter.DEFAULT_HIDDEN` = Mode + Gear, applied once
   on update unless something was already hidden. Built and unit-tested; not yet seen on a screen.
   Release APK (3 Nov): `build_apk_release.bat` -> `dist\H-ECU-Logger-<version>.apk`, signed via
   `android/keystore.properties` (gitignored; template `keystore.properties.example`) pointing to
