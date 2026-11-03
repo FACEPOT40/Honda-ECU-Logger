@@ -48,6 +48,8 @@ class RideViewActivity : Activity() {
         cursorText = uiText(13f, android.graphics.Color.WHITE)
         root.addView(cursorText)
         markerRow = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        markerRow.addView(uiButton("Summary") { showSummary() })
+        markerRow.addView(uiButton("Cells") { openCells(name) })
         markerRow.addView(uiButton("Full ride") { ride?.let { graph.setRange(it.start, it.end) } })
         root.addView(HorizontalScrollView(this).apply { addView(markerRow) })
 
@@ -78,6 +80,7 @@ class RideViewActivity : Activity() {
 
     private fun show(r: RideData) {
         ride = r
+        OpenRide.ride = r
         val rate = if (r.durationMs > 0) (r.t.size - 1) * 1000.0 / r.durationMs else 0.0
         info.text = "Start ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(r.start))} · " +
             "Length ${formatDuration(r.durationMs)} · ${"%,d".format(r.t.size)} samples · ${"%.1f".format(Locale.US, rate)}/s"
@@ -106,7 +109,28 @@ class RideViewActivity : Activity() {
         val r = ride ?: return
         val c = graph.cursorMs
         cursorText.text = if (c == null) "Tap a graph to read every value at that moment. Pinch to zoom, drag sideways to move."
-            else "Cursor ${CURSOR_CLOCK.format(Date(c))}  (+${formatDuration(c - r.start)})"
+            else "Cursor ${CURSOR_CLOCK.format(Date(c))}  (+${formatDuration(c - r.start)})" +
+                (Cells.cellAt(r, r.indexAt(c))?.let { (row, col) -> "\nMap cell ${Cells.name(row, col)}" } ?: "")
+    }
+
+    private fun showSummary() {
+        val r = ride ?: return
+        val text = RideSummary.lines(r, OpenRide.steady()).joinToString("\n\n") { (k, v) -> "$k\n$v" }
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Ride summary")
+            .setMessage(text)
+            .setPositiveButton("OK", null)
+            .show()
+    }
+
+    /** The cell table for the time range now in view; it starts at the cursor's cell. */
+    private fun openCells(name: String) {
+        if (ride == null) return
+        startActivity(android.content.Intent(this, CellsActivity::class.java)
+            .putExtra(CellsActivity.EXTRA_FROM, graph.fromMs)
+            .putExtra(CellsActivity.EXTRA_TO, graph.toMs)
+            .putExtra(CellsActivity.EXTRA_CURSOR, graph.cursorMs ?: -1L)
+            .putExtra(CellsActivity.EXTRA_NAME, name))
     }
 
     companion object {

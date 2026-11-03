@@ -21,6 +21,18 @@ class RideData(
     /** True if the CSV has at least one value for [key]. */
     fun has(key: String) = cols[key]?.any { !it.isNaN() } == true
 
+    /** Every value of [key], one per sample (NaN where missing); null if the column is absent. */
+    fun values(key: String): FloatArray? = cols[key]
+
+    /** Index of the sample nearest to time [x]. */
+    fun indexAt(x: Long): Int {
+        val i = lowerBound(x).coerceAtMost(t.size - 1)
+        return if (i > 0 && x - t[i - 1] < t[i] - x) i - 1 else i
+    }
+
+    /** First and last index (inclusive) of the samples from [from] to [to]; empty range if none. */
+    fun indexRange(from: Long, to: Long): IntRange = lowerBound(from) until lowerBound(to + 1)
+
     override fun series(key: String, from: Long, to: Long): History.Series {
         val v = cols[key] ?: return History.Series(LongArray(0), FloatArray(0))
         val a = lowerBound(from)

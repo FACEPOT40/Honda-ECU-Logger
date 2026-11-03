@@ -47,6 +47,12 @@ changes briefly and plainly). License GPL-3.0. Full background: `docs/PLAN.md`.
   ports `load_csv` (columns by name, so old PC CSVs open). `Ui.kt` holds shared colors (`Look`)
   and the Values filter (`ValueFilter`). Unit-tested (`RideDataTest`; `-Dride.file=` loads a real
   CSV and matched Python on two rides); the screens are not yet seen on a phone.
+  Ride summary + cell table on the phone (3 Nov): `Cells.kt` ports `cells.py` (must stay in step;
+  `CellsTest -Dride.file=` + a Python compare gave 0 differences on 270 and 228 cells of two rides),
+  `RideSummary.kt` (length, running/idle/fuel-cut time, max RPM/TPS, injector duty, temp and time
+  >= 120 °C, battery low, GPS speed, O2 lean share, 3 leanest cells), `CellsActivity` +
+  `CellGridView` (drag-scroll grid with sticky RPM/TPS headers, tap for details) for the range in
+  view; `OpenRide` shares the loaded ride. The viewer's cursor line also names the map cell.
   Don't start the emulator unless Pai asks: the window it opens from the command line doesn't fit
   Pai's display. Pai runs it from Android Studio's Device Manager.
 
