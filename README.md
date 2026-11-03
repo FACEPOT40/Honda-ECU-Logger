@@ -4,7 +4,11 @@ Record live ECU data from Honda/Keihin K-line motorcycles while you ride, then r
 
 You can't look at a screen while riding. So: connect, press **Start Record**, ride, press **Stop**, and analyze the timestamped CSV later (in the app or in Excel).
 
-> **Read-only.** The app only sends wake-up, init and live-data queries. It contains no ECU write / flash / EEPROM commands.
+There are two apps in this repo, recording the same CSV format:
+- **Windows app** (Python): live screen, recording and the full ride viewer
+- **Android app** (`android/`): a phone recorder for the handlebar or pocket, with live tiles and graphs, a simple ride viewer and GPS speed
+
+> **Read-only.** The apps only send wake-up, init, live-data and fault-code read queries (each checked against a strict whitelist). They contain no ECU write / flash / EEPROM commands and never clear fault codes.
 > **Never look at the screen while riding.**
 > Not affiliated with Honda Motor Co.
 
@@ -26,7 +30,28 @@ You can't look at a screen while riding. So: connect, press **Start Record**, ri
   - min / avg / max for the time range in view; click a marker to jump to it
   - Mouse wheel zooms time; your last selection is remembered
   - Drop a CSV onto the .exe, or run `python viewer.py ride.csv`, to open it directly
-- Auto-reconnect if the K-line link drops
+  - The cursor also shows which **fuel / ignition map cell** (RPM × TPS) the engine was in
+  - **Cell hits (map table)**: time, O2, lean share and injector time per map cell for the range in view, to see which cells need tuning
+- **Fault codes (DTC)**: read once on connect and with *Read again*; the Faults button turns green (none), orange (past) or red (current). Read only, codes are never cleared
+- Auto-reconnect if the K-line link drops or the cable is unplugged (a running recording carries on)
+
+## Android app
+A recorder for the phone, so you don't have to carry the laptop on rides. Built and tested in the emulator; first run on a real phone and bike still to come.
+
+- Live **tiles** in the same colors as the PC app, or live **graphs** (10 / 30 / 60 s), with a *Values* filter to hide what you don't need (hidden values are still recorded)
+- **Start / Stop Record** and **Marker**, saving the same CSV as the PC app (Documents/HondaECULogger on the phone), so phone rides open in the PC viewer
+- **GPS speed** from the phone (speed only, location is never stored), in the `gps_kmh` column
+- **Read**: open a recorded ride (from the phone or the laptop) with zoomable graphs and a cursor, a **ride summary** and a **map cell table** (landscape)
+- **Faults** button for fault codes, like the PC app
+- Keeps recording with the screen off (foreground service)
+
+What you need: an Android phone with USB OTG, an **OTG adapter** (USB-C to USB-A) and the same FTDI K-line cable. **No driver to install**: the app talks to the FTDI chip itself. On the first connect Android asks to allow the app to use the USB device; press Allow.
+
+Build (Android Studio, or from the command line with `JAVA_HOME` set to Android Studio's `jbr`):
+```bat
+android\gradlew.bat testDebugUnitTest assembleDebug
+```
+Output: `android\app\build\outputs\apk\debug\app-debug.apk`; copy it to the phone and install it (allow installing from unknown sources).
 
 ## Tested hardware
 | Item | Value |
@@ -59,15 +84,16 @@ build_exe.bat
 Output: `dist\HondaECULogger.exe`
 
 ## CSV columns
-`timestamp, elapsed_s, rpm, tps_pct, ect_c, batt_v, speed_kmh, inj_ms, ign_deg, o2_v, stft, mode_d14, neutral, marker, raw_17, raw_20, raw_d1`
+`timestamp, elapsed_s, rpm, tps_pct, ect_c, batt_v, speed_kmh, inj_ms, ign_deg, o2_v, stft, mode_d14, neutral, gps_kmh, marker, raw_17, raw_20, raw_d1`
 
-`neutral` is 1/0 (1 = in neutral). `mode_d14` is the raw byte 14 of table 0x17: the PGM-FI sheet calls it fast idle, but on the Wave it is always 128 (0x80), so its meaning is unknown there.
+`neutral` is 1/0 (1 = in neutral). `gps_kmh` is the phone's GPS speed (empty in PC logs or without a GPS fix). `mode_d14` is the raw byte 14 of table 0x17: the PGM-FI sheet calls it fast idle, but on the Wave it is always 128 (0x80), so its meaning is unknown there.
 
 ## Protocol test tool
 `tools/m0_probe.py` is a console script that wakes the ECU, reads the ECM ID and prints raw table bytes. Use it to verify a new bike/ECU:
 ```bat
 python tools\m0_probe.py --list
 python tools\m0_probe.py --port COM3 --seconds 30 -v
+python tools\m0_probe.py --port COM3 --dtc -v      # read fault codes only
 ```
 
 ## Credits
