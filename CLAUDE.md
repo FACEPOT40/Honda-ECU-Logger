@@ -109,7 +109,10 @@ changes briefly and plainly). License GPL-3.0. Full background: `docs/PLAN.md`.
   which clears the WRITE buffer; the 00 left by the wake-up break stayed in the READ buffer, so
   the echo check latched "no echo" and init never matched. Now it purges the read side (plus a
   short drain) and only decides echo from a non-empty answer. The status chip now shows
-  "Waking ECU…" / "No reply" instead of a generic "Connecting…". Not yet retried on the bike.
+  "Waking ECU…" / "No reply" instead of a generic "Connecting…". **Confirmed on the bike 3 Nov**
+  (ride_20261103_205857, 2.3 min around the house, not committed): connects, records, 17.7
+  samples/s (PC: ~11.6), no gaps over 79 ms, GPS fix 100 % of samples (max 33.8 km/h), values
+  plausible (ECT 66-77 °C warming up, battery ~12.0 V at idle / 13.2-13.4 V above 2,500 rpm).
   Don't start the emulator unless Pai asks: the window it opens from the command line doesn't fit
   Pai's display. Pai runs it from Android Studio's Device Manager.
 
