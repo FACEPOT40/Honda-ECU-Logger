@@ -38,6 +38,12 @@ class MainActivity : Activity() {
     private lateinit var grid: GridLayout
     private lateinit var valuesBtn: Button
     private lateinit var noTilesText: TextView
+    private lateinit var modeBtn: Button
+    private lateinit var tilesScroll: View
+    private lateinit var graphPanel: View
+    private lateinit var graphView: GraphView
+    private lateinit var graphHint: TextView
+    private val windowBtns = mutableMapOf<Int, Button>()
     private lateinit var statusText: TextView
     private lateinit var ecmText: TextView
     private lateinit var recText: TextView
@@ -141,6 +147,11 @@ class MainActivity : Activity() {
             Live.recordingFile.isNotEmpty() -> "Saved " + Live.recordingFile
             else -> ""
         }
+        if (graphPanel.visibility == View.VISIBLE) {
+            graphHint.visibility = if (on) View.GONE else View.VISIBLE
+            graphView.visibility = if (on) View.VISIBLE else View.GONE
+            graphView.invalidate()
+        }
         val s = if (on) Live.sample else emptyMap()     // never show old numbers as if live
         val bad = Decode.alerts(s)
         for (f in Decode.FIELDS) {
@@ -164,9 +175,11 @@ class MainActivity : Activity() {
             addView(ecmText)
         }
         valuesBtn = button("Values") { chooseValues() }
+        modeBtn = button("Graphs") { setGraphMode(graphPanel.visibility != View.VISIBLE) }
         root.addView(LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
             addView(heading, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            addView(modeBtn)
             addView(valuesBtn)
         })
 
@@ -177,14 +190,12 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
             setPadding(dp(12), dp(32), dp(12), dp(32))
         }
-        val tileArea = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(noTilesText)
-            addView(grid)
-        }
-        root.addView(ScrollView(this).apply { addView(tileArea) },
-            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        root.addView(noTilesText)
+        tilesScroll = ScrollView(this).apply { addView(grid) }
+        root.addView(tilesScroll, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        root.addView(buildGraphPanel(), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         showTiles()
+        setGraphMode(getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_GRAPHS, false))
 
         recText = text(12f, GREY)
         root.addView(recText)
@@ -225,8 +236,53 @@ class MainActivity : Activity() {
             width = 0
             setMargins(dp(4), dp(4), dp(4), dp(4))
         })
+        graphView.fields = shown
         noTilesText.visibility = if (shown.isEmpty()) View.VISIBLE else View.GONE
         valuesBtn.text = "Values ${shown.size}/${Decode.FIELDS.size}"
+    }
+
+    private fun buildGraphPanel(): View {
+        val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
+        graphView = GraphView(this).apply {
+            colors = COLORS
+            tileColor = TILE
+            windowMs = prefs.getInt(KEY_WINDOW, 30) * 1000L
+        }
+        graphHint = text(14f, GREY).apply {
+            text = "Connect to see live graphs."
+            gravity = Gravity.CENTER
+            setPadding(dp(12), dp(32), dp(12), dp(32))
+        }
+        val windowRow = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        windowRow.addView(text(12f, GREY).apply { text = "Window" },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        for (sec in intArrayOf(10, 30, 60)) {
+            windowBtns[sec] = button("$sec s") { setWindow(sec) }.also { windowRow.addView(it) }
+        }
+        setWindow(prefs.getInt(KEY_WINDOW, 30))
+        graphPanel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(windowRow)
+            addView(graphHint)
+            addView(ScrollView(this@MainActivity).apply { addView(graphView) },
+                LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        }
+        return graphPanel
+    }
+
+    /** Graphs only change the screen: polling and the CSV are the same in both modes. */
+    private fun setGraphMode(on: Boolean) {
+        graphPanel.visibility = if (on) View.VISIBLE else View.GONE
+        tilesScroll.visibility = if (on) View.GONE else View.VISIBLE
+        modeBtn.text = if (on) "Tiles" else "Graphs"
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_GRAPHS, on).apply()
+    }
+
+    private fun setWindow(sec: Int) {
+        graphView.windowMs = sec * 1000L
+        for ((s, b) in windowBtns) b.alpha = if (s == sec) 1f else 0.45f
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putInt(KEY_WINDOW, sec).apply()
+        graphView.invalidate()
     }
 
     private fun chooseValues() {
@@ -307,6 +363,8 @@ class MainActivity : Activity() {
         private const val ACTION_USB_PERMISSION = "com.pai.hondaecu.USB_PERMISSION"
         private const val PREFS = "screen"
         private const val KEY_HIDDEN = "hidden_values"
+        private const val KEY_GRAPHS = "show_graphs"
+        private const val KEY_WINDOW = "graph_window_s"
 
         // Same colors as COLORS in viewer.py, so a value looks the same on the phone and the PC
         private val COLORS = mapOf(

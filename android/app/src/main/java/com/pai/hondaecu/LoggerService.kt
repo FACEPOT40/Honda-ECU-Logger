@@ -27,6 +27,7 @@ object Live {
     @Volatile var recordingFile = ""
     @Volatile var recordingStart = 0L
     @Volatile var recordError = ""
+    val history = History()                     // for the live graphs only
 }
 
 /**
@@ -82,12 +83,14 @@ class LoggerService : Service() {
             onSample = { if (poller === p) onSample(it) },
         )
         poller = p
+        Live.history.clear()
         Live.connected = true
         Thread(p::run, "kline-poller").start()
     }
 
     private fun onSample(s: Map<String, Any?>) {
         Live.sample = s
+        Live.history.add(s)
         synchronized(lock) {
             val w = writer ?: return
             try {
@@ -153,7 +156,11 @@ class LoggerService : Service() {
 
     private fun mark() {
         synchronized(lock) {
-            if (writer != null) csv?.mark("M${++markerN}")
+            if (writer != null) {
+                val label = "M${++markerN}"
+                csv?.mark(label)
+                Live.history.mark(System.currentTimeMillis(), label)
+            }
         }
     }
 

@@ -32,6 +32,10 @@ changes briefly and plainly). License GPL-3.0. Full background: `docs/PLAN.md`.
   viewer. The emulator has no USB, so `KLine.kt` and the FTDI link are not yet run on a phone or the bike.
   Tiles use the same per-value colors as `viewer.py`, and a Values button hides tiles (saved on the
   phone); hiding is display only, the CSV keeps every value. Built 30 Oct, not yet seen on a screen.
+  Live graphs (3 Nov): a Graphs/Tiles button switches the screen; `GraphView.kt` draws one colored
+  panel per shown value over a 10/30/60 s window, with marker lines. `History.kt` keeps the last
+  ~3,000 samples, filled by `LoggerService`, cleared on Connect; recording does not use it.
+  Unit-tested (`HistoryTest`), not yet seen on a screen. Recorded-ride graphs stay in the PC viewer.
   Don't start the emulator unless Pai asks: the window it opens from the command line doesn't fit
   Pai's display. Pai runs it from Android Studio's Device Manager.
 
