@@ -4,7 +4,7 @@ package com.pai.hondaecu
  * The last few minutes of samples, for the live graphs. The poller thread adds to it and the
  * screen reads it, so every method is synchronized. Recording does not use it.
  */
-class History(private val capacity: Int = 3000) {
+class History(private val capacity: Int = 3000) : GraphSource {
     private val keys = Decode.FIELDS.map { it.key }
     private val times = LongArray(capacity)
     private val data = Array(keys.size) { FloatArray(capacity) }
@@ -34,12 +34,14 @@ class History(private val capacity: Int = 3000) {
         marks.addLast(t to label)
     }
 
-    /** Samples of one value at or after [since], oldest first. */
-    @Synchronized fun series(key: String, since: Long): Series {
+    /** Samples of one value from [from] to [to] (both included), oldest first. */
+    @Synchronized override fun series(key: String, from: Long, to: Long): Series {
         val k = keys.indexOf(key)
         var first = 0
-        while (first < size && times[(start + first) % capacity] < since) first++
-        val n = if (k < 0) 0 else size - first
+        while (first < size && times[(start + first) % capacity] < from) first++
+        var end = size
+        while (end > first && times[(start + end - 1) % capacity] > to) end--
+        val n = if (k < 0) 0 else end - first
         val t = LongArray(n)
         val v = FloatArray(n)
         for (j in 0 until n) {
@@ -50,5 +52,6 @@ class History(private val capacity: Int = 3000) {
         return Series(t, v)
     }
 
-    @Synchronized fun marks(since: Long): List<Pair<Long, String>> = marks.filter { it.first >= since }
+    @Synchronized override fun marks(from: Long, to: Long): List<Pair<Long, String>> =
+        marks.filter { it.first in from..to }
 }

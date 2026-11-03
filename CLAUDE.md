@@ -23,7 +23,7 @@ changes briefly and plainly). License GPL-3.0. Full background: `docs/PLAN.md`.
 - `viewer.py`: ride viewer (tick values, one graph per value, presets, one-at-a-time, cursor readout)
 - `tools/m0_probe.py`: console protocol probe (uses `decode.py` and `kline.SimECU`)
 
-- `android/`: Kotlin recorder app (tiles, Start/Stop Record, marker; graphs stay on the PC). Same
+- `android/`: Kotlin recorder app (tiles, live graphs, Start/Stop Record, marker, recorded-ride viewer). Same
   read-only whitelist (`Protocol.kt`) and same CSV. `Decode.kt` / `CsvFormat.kt` must stay in step
   with `decode.py` / `recorder.py`. Build: `android\gradlew.bat testDebugUnitTest assembleDebug`
   with `JAVA_HOME` = Android Studio's `jbr`. `DecodeTest` compares with Python vectors.
@@ -37,7 +37,12 @@ changes briefly and plainly). License GPL-3.0. Full background: `docs/PLAN.md`.
   ~3,000 samples, filled by `LoggerService`, cleared on Connect; recording does not use it.
   Unit-tested (`HistoryTest`) and checked 3 Nov on a windowless emulator (`-no-window`, with
   Pai's OK): graphs, window buttons, markers, filter, hidden values still fully in the CSV.
-  Recorded-ride graphs stay in the PC viewer.
+  Recorded rides (3 Nov): Rides button -> `RidesActivity` (the app's own CSVs via MediaStore, plus
+  "Open other file" for laptop CSVs) -> `RideViewActivity`, which reuses `GraphView` in recorded
+  mode (pinch zoom, drag to move, tap cursor, min/avg/max, marker jump buttons). `RideData.kt`
+  ports `load_csv` (columns by name, so old PC CSVs open). `Ui.kt` holds shared colors (`Look`)
+  and the Values filter (`ValueFilter`). Unit-tested (`RideDataTest`; `-Dride.file=` loads a real
+  CSV and matched Python on two rides); the screens are not yet seen on a phone.
   Don't start the emulator unless Pai asks: the window it opens from the command line doesn't fit
   Pai's display. Pai runs it from Android Studio's Device Manager.
 

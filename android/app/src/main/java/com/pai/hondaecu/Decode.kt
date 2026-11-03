@@ -10,7 +10,9 @@ import java.math.RoundingMode
 object Decode {
     const val INJ_DIVISOR = 65535 / 265.5
 
-    class Field(val key: String, val label: String, val unit: String, val decimals: Int)
+    class Field(val key: String, val label: String, val unit: String, val decimals: Int) {
+        val title get() = if (unit.isEmpty()) label else "$label ($unit)"
+    }
 
     val FIELDS = listOf(
         Field("rpm", "RPM", "rpm", 0),

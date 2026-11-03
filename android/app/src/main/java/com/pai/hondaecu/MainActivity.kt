@@ -2,7 +2,6 @@ package com.pai.hondaecu
 
 import android.Manifest
 import android.app.Activity
-import android.app.AlertDialog
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -30,7 +29,7 @@ import android.widget.TextView
 import android.widget.Toast
 import com.hoho.android.usbserial.driver.UsbSerialProber
 
-/** One screen: a tile per value plus Connect, Record and Marker. Graphs stay on the laptop. */
+/** Main screen: tiles or live graphs, plus Connect, Record, Marker, and Rides for recorded rides. */
 class MainActivity : Activity() {
     private val ui = Handler(Looper.getMainLooper())
     private val values = mutableMapOf<String, TextView>()
@@ -44,6 +43,7 @@ class MainActivity : Activity() {
     private lateinit var graphView: GraphView
     private lateinit var graphHint: TextView
     private val windowBtns = mutableMapOf<Int, Button>()
+    private var windowMs = 30_000L
     private lateinit var statusText: TextView
     private lateinit var ecmText: TextView
     private lateinit var recText: TextView
@@ -85,6 +85,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        showTiles()                 // the Values choice may have changed in the ride viewer
         ui.post(refresh)
     }
 
@@ -150,6 +151,9 @@ class MainActivity : Activity() {
         if (graphPanel.visibility == View.VISIBLE) {
             graphHint.visibility = if (on) View.GONE else View.VISIBLE
             graphView.visibility = if (on) View.VISIBLE else View.GONE
+            val now = System.currentTimeMillis()
+            graphView.fromMs = now - windowMs
+            graphView.toMs = now
             graphView.invalidate()
         }
         val s = if (on) Live.sample else emptyMap()     // never show old numbers as if live
@@ -174,7 +178,7 @@ class MainActivity : Activity() {
             addView(statusText)
             addView(ecmText)
         }
-        valuesBtn = button("Values") { chooseValues() }
+        valuesBtn = button("Values") { ValueFilter.choose(this) { showTiles() } }
         modeBtn = button("Graphs") { setGraphMode(graphPanel.visibility != View.VISIBLE) }
         root.addView(LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
@@ -198,7 +202,11 @@ class MainActivity : Activity() {
         setGraphMode(getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_GRAPHS, false))
 
         recText = text(12f, GREY)
-        root.addView(recText)
+        root.addView(LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            addView(recText, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            addView(button("Rides") { startActivity(Intent(this@MainActivity, RidesActivity::class.java)) })
+        })
         simBox = CheckBox(this).apply {
             text = "Simulator"
             setTextColor(GREY)
@@ -223,13 +231,9 @@ class MainActivity : Activity() {
         return root
     }
 
-    private fun hiddenKeys(): Set<String> =
-        getSharedPreferences(PREFS, MODE_PRIVATE).getStringSet(KEY_HIDDEN, null) ?: emptySet()
-
     /** Only changes which tiles are on screen: polling and the CSV never look at this. */
     private fun showTiles() {
-        val hidden = hiddenKeys()
-        val shown = Decode.FIELDS.filter { it.key !in hidden }
+        val shown = ValueFilter.shown(this)
         grid.removeAllViews()
         for (f in shown) grid.addView(tiles.getValue(f.key), GridLayout.LayoutParams(
             GridLayout.spec(GridLayout.UNDEFINED), GridLayout.spec(GridLayout.UNDEFINED, 1f)).apply {
@@ -246,7 +250,7 @@ class MainActivity : Activity() {
         graphView = GraphView(this).apply {
             colors = COLORS
             tileColor = TILE
-            windowMs = prefs.getInt(KEY_WINDOW, 30) * 1000L
+            source = Live.history
         }
         graphHint = text(14f, GREY).apply {
             text = "Connect to see live graphs."
@@ -279,34 +283,11 @@ class MainActivity : Activity() {
     }
 
     private fun setWindow(sec: Int) {
-        graphView.windowMs = sec * 1000L
+        windowMs = sec * 1000L
         for ((s, b) in windowBtns) b.alpha = if (s == sec) 1f else 0.45f
         getSharedPreferences(PREFS, MODE_PRIVATE).edit().putInt(KEY_WINDOW, sec).apply()
         graphView.invalidate()
     }
-
-    private fun chooseValues() {
-        val fields = Decode.FIELDS
-        val hidden = hiddenKeys()
-        val checked = BooleanArray(fields.size) { fields[it].key !in hidden }
-        val names = Array(fields.size) { fieldName(fields[it]) }
-        fun save(keys: Set<String>) {
-            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putStringSet(KEY_HIDDEN, keys).apply()
-            showTiles()
-        }
-        AlertDialog.Builder(this)
-            .setTitle("Values to show (all are still recorded)")
-            .setMultiChoiceItems(names, checked) { _, i, on -> checked[i] = on }
-            .setPositiveButton("OK") { _, _ ->
-                save(fields.filterIndexed { i, _ -> !checked[i] }.map { it.key }.toSet())
-            }
-            .setNeutralButton("Show all") { _, _ -> save(emptySet()) }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun fieldName(f: Decode.Field) =
-        if (f.unit.isEmpty()) f.label else "${f.label} (${f.unit})"
 
     private fun tile(f: Decode.Field): View {
         val color = COLORS.getValue(f.key)
@@ -325,7 +306,7 @@ class MainActivity : Activity() {
         val label = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
             addView(swatch, LinearLayout.LayoutParams(dp(12), dp(12)).apply { marginEnd = dp(6) })
-            addView(text(13f, color).apply { text = fieldName(f) })
+            addView(text(13f, color).apply { text = f.title })
         }
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -361,23 +342,15 @@ class MainActivity : Activity() {
 
     companion object {
         private const val ACTION_USB_PERMISSION = "com.pai.hondaecu.USB_PERMISSION"
-        private const val PREFS = "screen"
-        private const val KEY_HIDDEN = "hidden_values"
+        private const val PREFS = ValueFilter.PREFS
         private const val KEY_GRAPHS = "show_graphs"
         private const val KEY_WINDOW = "graph_window_s"
-
-        // Same colors as COLORS in viewer.py, so a value looks the same on the phone and the PC
-        private val COLORS = mapOf(
-            "rpm" to "#4fc3f7", "tps_pct" to "#ffb74d", "ect_c" to "#ef5350",
-            "batt_v" to "#9ccc65", "speed_kmh" to "#ba68c8", "inj_ms" to "#4db6ac",
-            "ign_deg" to "#fff176", "o2_v" to "#f06292", "stft" to "#e0e0e0",
-            "mode_d14" to "#90a4ae", "neutral" to "#a1887f",
-        ).mapValues { Color.parseColor(it.value) }
-        private val BACKGROUND = Color.parseColor("#101214")
-        private val TILE = Color.parseColor("#1E2226")
-        private val GREY = Color.parseColor("#A0A8B0")
-        private val GREEN = Color.parseColor("#43A047")
-        private val ORANGE = Color.parseColor("#FB8C00")
-        private val RED = Color.parseColor("#EF5350")
+        private val COLORS = Look.COLORS
+        private val BACKGROUND = Look.BACKGROUND
+        private val TILE = Look.TILE
+        private val GREY = Look.GREY
+        private val GREEN = Look.GREEN
+        private val ORANGE = Look.ORANGE
+        private val RED = Look.RED
     }
 }

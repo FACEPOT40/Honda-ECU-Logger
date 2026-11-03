@@ -21,6 +21,7 @@ android {
         unitTests.all {
             // optional extra vectors made from real ride logs, which are never committed
             it.systemProperty("golden.file", System.getProperty("golden.file") ?: "")
+            it.systemProperty("ride.file", System.getProperty("ride.file") ?: "")
         }
     }
 }
