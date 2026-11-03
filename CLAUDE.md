@@ -87,7 +87,9 @@ changes briefly and plainly). License GPL-3.0. Full background: `docs/PLAN.md`.
   `CellsTest -Dride.file=` + a Python compare gave 0 differences on 270 and 228 cells of two rides),
   `RideSummary.kt` (length, running/idle/fuel-cut time, max RPM/TPS, injector duty, temp and time
   >= 120 °C, battery low, GPS speed, O2 lean share, 3 leanest cells), `CellsActivity` +
-  `CellGridView` (drag-scroll grid with sticky RPM/TPS headers, tap for details) for the range in
+  `CellGridView` (starts with the whole 29 x 29 map fitted, colors only until the cells are big enough
+  for numbers; pinch zoom, double-tap zooms to a cell / back to fit, drag, sticky RPM/TPS headers
+  that skip labels when crowded, tap for details; compact header since 3 Nov) for the range in
   view; `OpenRide` shares the loaded ride. The viewer's cursor line also names the map cell.
   Main screen redesign (3 Nov, v0.3.0, Pai's choices: phone upright on the handlebar, tabs on
   top, record at the bottom, tiles stay while recording, separate Connect and Record buttons,

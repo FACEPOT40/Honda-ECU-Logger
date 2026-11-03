@@ -1,8 +1,10 @@
 package com.pai.hondaecu
 
 import android.app.Activity
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.os.Bundle
+import android.text.TextUtils
 import android.view.Gravity
 import android.widget.Button
 import android.widget.CheckBox
@@ -38,13 +40,13 @@ class CellsActivity : Activity() {
             setBackgroundColor(Look.BACKGROUND)
             padForSystemBars()
         }
-        // landscape: a title line, one row of controls, the grid, then one line of details
-        root.addView(LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            addView(uiText(14f, Color.WHITE, "Cell hits · ${intent.getStringExtra(EXTRA_NAME) ?: ""}"),
-                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            addView(uiText(11f, Look.GREY, "Range ${clock.format(Date(from))} – ${clock.format(Date(to))}  ·  " +
-                "rows = RPM, columns = TPS %  ·  O2: blue = lean, orange/red = rich  ·  faint = under $MIN_SAMPLES samples"))
+        // landscape, kept short so the grid gets the height: one line of title and legend, one row
+        // of small controls, the grid, one line of details
+        root.addView(uiText(12f, Look.GREY, "Cell hits  ·  ${clock.format(Date(from))} – ${clock.format(Date(to))}" +
+            "  ·  O2: blue = lean, orange/red = rich  ·  faint = under $MIN_SAMPLES samples" +
+            "  ·  pinch or double-tap to zoom").apply {
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
         })
         val controls = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
         for (m in CellGridView.Mode.values()) {
@@ -52,6 +54,8 @@ class CellsActivity : Activity() {
         }
         steadyBox = CheckBox(this).apply {
             text = "Steady throttle only"
+            textSize = 13f
+            buttonTintList = ColorStateList.valueOf(Look.BLUE)
             setTextColor(Look.GREY)
             isChecked = true
             setOnCheckedChangeListener { _, _ -> refresh() }
@@ -61,7 +65,10 @@ class CellsActivity : Activity() {
 
         grid = CellGridView(this).apply { onSelect = { r, c -> showDetails(r, c) } }
         root.addView(grid, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
-        details = uiText(13f, Color.WHITE, "Drag to move around, tap a cell for its numbers.")
+        details = uiText(12f, Color.WHITE, "Tap a cell for its numbers.").apply {
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
+        }
         root.addView(details)
         setContentView(root)
 
@@ -81,7 +88,14 @@ class CellsActivity : Activity() {
 
     private fun setMode(m: CellGridView.Mode) {
         grid.mode = m
-        for ((mode, b) in modeBtns) b.tone(if (mode == m) Tone.PRIMARY else Tone.PLAIN)
+        for ((mode, b) in modeBtns) {
+            b.tone(if (mode == m) Tone.PRIMARY else Tone.PLAIN)
+            // small buttons: the grid needs the height more
+            b.textSize = 13f
+            b.minHeight = 0
+            b.minimumHeight = 0
+            b.setPadding(dp(14), dp(7), dp(14), dp(7))
+        }
         refresh()
     }
 
