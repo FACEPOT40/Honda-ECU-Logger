@@ -1,15 +1,17 @@
 """Honda ECU Logger: live ECU data with graphs, Start/Stop Record to CSV.
 Read-only: it never writes to the ECU."""
 
+import bisect
 import datetime as dt
 import sys
 import time
 from collections import deque
+from itertools import islice
 
 import pyqtgraph as pg
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction, QFont, QKeySequence, QShortcut
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog, QGraphicsItem,
                                QGridLayout, QHBoxLayout, QLabel, QMainWindow,
                                QMessageBox, QPushButton, QVBoxLayout, QWidget)
 
@@ -43,7 +45,8 @@ class DualPlot:
         self.plot.setTitle(title, size="9pt")
         self.plot.showGrid(x=True, y=True, alpha=0.2)
         self.plot.setLabel("left", LABELS[left][0], color=COLORS[0])
-        self.c1 = self.plot.plot(pen=pg.mkPen(COLORS[0], width=2))
+        # 1.5 px lines: 2 px antialiased lines are much slower to draw 10 times a second
+        self.c1 = self.plot.plot(pen=pg.mkPen(COLORS[0], width=1.5))
         self.c2 = None
         if right:
             self.vb2 = pg.ViewBox()
@@ -52,7 +55,7 @@ class DualPlot:
             self.plot.getAxis("right").linkToView(self.vb2)
             self.plot.getAxis("right").setLabel(LABELS[right][0], color=COLORS[1])
             self.vb2.setXLink(self.plot)
-            self.c2 = pg.PlotCurveItem(pen=pg.mkPen(COLORS[1], width=2))
+            self.c2 = pg.PlotCurveItem(pen=pg.mkPen(COLORS[1], width=1.5))
             self.vb2.addItem(self.c2)
             self.plot.vb.sigResized.connect(self._sync)
         self.markers = []
@@ -85,6 +88,13 @@ def build_graphs():
     plots = [DualPlot(widget, i, l, r, t) for i, (l, r, t) in enumerate(GRAPHS)]
     for p in plots[1:]:
         p.plot.setXLink(plots[0].plot)
+    # time labels only under the bottom graph (the axes were most of the drawing time, 10x a
+    # second); the side scales are kept as images and only redrawn when their range changes
+    for p in plots:
+        if p is not plots[-1]:
+            p.plot.getAxis("bottom").setStyle(showValues=False)
+        for ax in ("left", "right"):
+            p.plot.getAxis(ax).setCacheMode(QGraphicsItem.DeviceCoordinateCache)
     return widget, plots
 
 
@@ -322,8 +332,13 @@ class MainWindow(QMainWindow):
         t = list(self.buf["t"])
         if not t:
             return
+        # draw only the samples in the time window: the buffer keeps ~7 minutes (6,000
+        # samples), and drawing all of it 10 times a second made the live screen lag
+        i0 = bisect.bisect_left(t, now - self.window_s - 1)
+        t = t[i0:]
         for p, (l, r, _) in zip(self.plots, GRAPHS):
-            p.set_data(t, list(self.buf[l]), list(self.buf[r]) if r else None)
+            p.set_data(t, list(islice(self.buf[l], i0, None)),
+                       list(islice(self.buf[r], i0, None)) if r else None)
         self.plots[0].plot.setXRange(now - self.window_s, now, padding=0)
         for p in self.plots:
             p.plot.enableAutoRange(axis=pg.ViewBox.YAxis)
