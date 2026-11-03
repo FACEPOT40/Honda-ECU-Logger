@@ -20,7 +20,11 @@ changes briefly and plainly). License GPL-3.0. Full background: `docs/PLAN.md`.
   every 5th (`EVERY`), auto-reconnect)
 - `recorder.py`: CSV writer (wall-clock `timestamp` primary, `elapsed_s`, marker, raw bytes)
 - `app.py`: main window (live values, 4 dual-axis graphs, record, marker `M`)
-- `viewer.py`: ride viewer (tick values, one graph per value, presets, one-at-a-time, cursor readout)
+- `viewer.py`: ride viewer (tick values, one graph per value, presets, one-at-a-time, cursor readout,
+  map cell at the cursor, "Cell hits (map table)" window)
+- `cells.py`: map cell math (3 Nov): the tune's RPM / TPS map axes (`RPM_AXIS`, `TPS_AXIS`, same
+  for fuel and ignition), nearest cell, `steady()` and `hits()` (time, O2, lean %, injector per
+  cell; O2 only with fuel on, sensor warm <= 1.2 V, optionally steady). Analysis only.
 - `tools/m0_probe.py`: console protocol probe (uses `decode.py` and `kline.SimECU`)
 
 - `android/`: Kotlin recorder app (tiles, live graphs, Start/Stop Record, marker, recorded-ride viewer). Same

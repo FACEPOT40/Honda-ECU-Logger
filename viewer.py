@@ -12,12 +12,14 @@ import sys
 import numpy as np
 import pyqtgraph as pg
 from PySide6.QtCore import QSettings, Qt
-from PySide6.QtGui import QFont, QKeySequence, QShortcut
+from PySide6.QtGui import QBrush, QColor, QFont, QKeySequence, QShortcut
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
-                               QGridLayout, QHBoxLayout, QLabel, QListWidget,
+                               QGridLayout, QHBoxLayout, QHeaderView, QLabel, QListWidget,
                                QListWidgetItem, QMainWindow, QMessageBox,
-                               QPushButton, QSplitter, QVBoxLayout, QWidget)
+                               QPushButton, QSplitter, QTableWidget, QTableWidgetItem,
+                               QVBoxLayout, QWidget)
 
+import cells
 from decode import FIELDS, fmt_value
 from recorder import default_log_dir
 
@@ -86,12 +88,16 @@ class LogViewer(QMainWindow):
     def __init__(self, path):
         super().__init__()
         self.t, self.data, self.markers = load_csv(path)
-        self.setWindowTitle(f"Honda ECU Logger - {os.path.basename(path)}")
+        self.name = os.path.basename(path)
+        self.setWindowTitle(f"Honda ECU Logger - {self.name}")
         self.resize(1350, 850)
         self.plots = {}
         self.vlines = []
         self.tags = {}            # key -> (dot, text) showing the value at the cursor
         self._bulk = False
+        self.view_mask = np.ones(len(self.t), dtype=bool)    # samples in the time range in view
+        self.cells_win = None
+        self._steady = None       # computed once, when the cell table first needs it
 
         # ---------------- left panel
         panel = QWidget()
@@ -166,6 +172,11 @@ class LogViewer(QMainWindow):
             b.clicked.connect(fn)
             btns.addWidget(b)
         pv.addLayout(btns)
+        cells_btn = QPushButton("Cell hits (map table)")
+        cells_btn.setToolTip("Time and O2 per fuel / ignition map cell (RPM × TPS) for the range in view")
+        cells_btn.clicked.connect(self.open_cells)
+        cells_btn.setEnabled("rpm" in self.data and "tps_pct" in self.data)
+        pv.addWidget(cells_btn)
 
         pv.addWidget(QLabel("<b>Markers</b> (click to jump)"))
         self.mark_list = QListWidget()
@@ -338,6 +349,9 @@ class LogViewer(QMainWindow):
             mask = (self.t >= x0) & (self.t <= x1)
         else:
             mask = np.ones(len(self.t), dtype=bool)
+        self.view_mask = mask
+        if self.cells_win is not None and self.cells_win.isVisible():
+            self.cells_win.refresh()
         for k in KEYS:
             if k not in self.data:
                 continue
@@ -366,7 +380,11 @@ class LogViewer(QMainWindow):
             v.setPos(t[i])
             v.setVisible(True)
         stamp = dt.datetime.fromtimestamp(t[i]).strftime("%H:%M:%S.%f")[:-3]
-        self.cursor_lbl.setText(f"Cursor: {stamp}  (+{fmt_dur(t[i] - t[0])})")
+        cell = self.cell_at(i)
+        self.cursor_lbl.setText(f"Cursor: {stamp}  (+{fmt_dur(t[i] - t[0])})\n"
+                                f"Map cell: {cells.cell_name(*cell) if cell else '-'}")
+        if self.cells_win is not None and self.cells_win.isVisible():
+            self.cells_win.show_cursor(cell)
         for k in KEYS:
             if k in self.data:
                 val = self.data[k][i]
@@ -395,6 +413,32 @@ class LogViewer(QMainWindow):
             dot.setVisible(True)
             text.setVisible(True)
 
+    def cell_at(self, i):
+        """(row, col) of the nearest map cell at sample i, or None if the engine was off."""
+        if "rpm" not in self.data or "tps_pct" not in self.data:
+            return None
+        rpm, tps = self.data["rpm"][i], self.data["tps_pct"][i]
+        if np.isnan(rpm) or np.isnan(tps) or rpm <= 0:
+            return None
+        return int(cells.nearest(cells.RPM_AXIS, rpm)), int(cells.nearest(cells.TPS_AXIS, tps))
+
+    def steady_mask(self):
+        if self._steady is None:
+            self._steady = cells.steady(self.t, self.data["rpm"], self.data["tps_pct"])
+        return self._steady
+
+    def open_cells(self):
+        if self.cells_win is None:
+            self.cells_win = CellHitsWindow(self)
+        self.cells_win.show()
+        self.cells_win.raise_()
+        self.cells_win.refresh()
+
+    def closeEvent(self, e):
+        if self.cells_win is not None:
+            self.cells_win.close()
+        e.accept()
+
     def jump_to_marker(self, item):
         ts = item.data(Qt.UserRole)
         fp = self.first_plot()
@@ -404,6 +448,123 @@ class LogViewer(QMainWindow):
         w = min(x1 - x0, 60)
         fp.setXRange(ts - w / 2, ts + w / 2, padding=0)
         self.show_at(ts)
+
+
+def _blend(color, f):
+    """White blended toward color by f (0..1), like the shading of a TunerPro map."""
+    f = float(np.clip(f, 0, 1))
+    c = QColor(color)
+    return QColor(int(255 + (c.red() - 255) * f), int(255 + (c.green() - 255) * f),
+                  int(255 + (c.blue() - 255) * f))
+
+
+class CellHitsWindow(QWidget):
+    """Per map cell (RPM rows × TPS columns, like TunerPro): time, O2, injector, for the time
+    range in view in the viewer. Follows the viewer's zoom and highlights the cursor's cell."""
+
+    MODES = {   # label: (key in cells.hits, number format)
+        "Time in cell (s)": ("seconds", "{:.1f}"),
+        "Average O2 (V)": ("o2", "{:.2f}"),
+        "Lean share (% of samples below 0.45 V)": ("lean_pct", "{:.0f}"),
+        "Average injector (ms)": ("inj", "{:.2f}"),
+        "Samples used for O2 and injector": ("n", "{:.0f}"),
+    }
+    MIN_SAMPLES = 5
+
+    def __init__(self, viewer):
+        super().__init__(None, Qt.Window)
+        self.viewer = viewer
+        self.setWindowTitle(f"Cell hits - {viewer.name}")
+        self.resize(1500, 820)
+        lay = QVBoxLayout(self)
+        top = QHBoxLayout()
+        self.mode = QComboBox()
+        self.mode.addItems(list(self.MODES))
+        self.mode.setCurrentIndex(1)
+        self.mode.currentIndexChanged.connect(self.refresh)
+        self.steady = QCheckBox("Steady throttle only (O2 and injector)")
+        self.steady.setChecked(True)
+        self.steady.setToolTip("Leaves out the moments right after the throttle or RPM changed: "
+                               "the O2 sensor lags behind, so those readings mislead")
+        self.steady.toggled.connect(self.refresh)
+        self.range_lbl = QLabel()
+        top.addWidget(QLabel("Show:"))
+        top.addWidget(self.mode)
+        top.addSpacing(16)
+        top.addWidget(self.steady)
+        top.addStretch()
+        top.addWidget(self.range_lbl)
+        lay.addLayout(top)
+
+        self.table = QTableWidget(len(cells.RPM_AXIS), len(cells.TPS_AXIS))
+        self.table.setHorizontalHeaderLabels([f"{v:g}" for v in cells.TPS_AXIS])
+        self.table.setVerticalHeaderLabels([f"{v:.0f}" for v in cells.RPM_AXIS])
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.setFont(QFont("Segoe UI", 8))
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        lay.addWidget(self.table, 1)
+        legend = QLabel(
+            "Rows = RPM, columns = TPS %, the same axes as the fuel and ignition maps in TunerPro. "
+            "Each moment counts in its nearest cell. O2 colors: blue = lean side (below 0.45 V), "
+            "orange / red = rich. Pale cells in italics = fewer than 5 samples, not reliable. "
+            "Zoom or move the graphs to look at part of the ride; the cursor's cell is selected.")
+        legend.setWordWrap(True)
+        legend.setStyleSheet("color:#666")
+        lay.addWidget(legend)
+
+    def refresh(self):
+        v = self.viewer
+        mask = v.view_mask
+        h = cells.hits(v.t, v.data, mask, v.steady_mask() if self.steady.isChecked() else None)
+        key, fmt = self.MODES[self.mode.currentText()]
+        vals, n = h[key], h["n"]
+        t_in = v.t[mask]
+        span = f"{dt.datetime.fromtimestamp(t_in[0]):%H:%M:%S} – {dt.datetime.fromtimestamp(t_in[-1]):%H:%M:%S}" \
+            if t_in.size else "-"
+        self.range_lbl.setText(f"Range in view: {span} · engine running {fmt_dur(h['seconds'].sum())}")
+        top = np.nanmax(vals) if np.isfinite(vals).any() and np.nanmax(vals) > 0 else 1
+        for r in range(vals.shape[0]):
+            for c in range(vals.shape[1]):
+                x = vals[r, c]
+                empty = (key == "seconds" and x < 0.05) or (key != "seconds" and (n[r, c] == 0 or np.isnan(x)))
+                item = QTableWidgetItem("" if empty else fmt.format(x))
+                item.setTextAlignment(Qt.AlignCenter)
+                if not empty:
+                    bg = self.color(key, x, top)
+                    if key != "seconds" and n[r, c] < self.MIN_SAMPLES:
+                        # too few samples to trust: a pale cell in italics, still readable
+                        bg = QColor((bg.red() + 2 * 255) // 3, (bg.green() + 2 * 255) // 3, (bg.blue() + 2 * 255) // 3)
+                        font = item.font()
+                        font.setItalic(True)
+                        item.setFont(font)
+                        item.setForeground(QBrush(QColor("#666666")))
+                    item.setBackground(QBrush(bg))
+                item.setToolTip(self.tooltip(h, r, c))
+                self.table.setItem(r, c, item)
+
+    @staticmethod
+    def color(key, x, top):
+        if key == "o2":            # lean side blue, rich side orange to red
+            return _blend("#4f8ff7", (cells.LEAN_V - x) / cells.LEAN_V) if x < cells.LEAN_V \
+                else _blend("#ff7043", (x - cells.LEAN_V) / 0.5)
+        if key == "lean_pct":
+            return _blend("#4f8ff7", x / 100)
+        return _blend({"seconds": "#26a69a", "inj": "#4db6ac", "n": "#9e9e9e"}[key], 0.15 + 0.85 * x / top)
+
+    @staticmethod
+    def tooltip(h, r, c):
+        lines = [cells.cell_name(r, c), f"{h['seconds'][r, c]:.1f} s running"]
+        if h["n"][r, c]:
+            lines += [f"O2 {h['o2'][r, c]:.2f} V average, {h['lean_pct'][r, c]:.0f} % of samples lean",
+                      f"Injector {h['inj'][r, c]:.2f} ms average", f"{h['n'][r, c]:.0f} samples"]
+        return "\n".join(lines)
+
+    def show_cursor(self, cell):
+        if cell is None:
+            self.table.clearSelection()
+            return
+        self.table.setCurrentCell(*cell)
 
 
 def main():
