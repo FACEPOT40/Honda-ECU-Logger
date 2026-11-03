@@ -22,10 +22,13 @@ fun Context.uiButton(label: String, onClick: () -> Unit) = Button(this).apply {
     setOnClickListener { onClick() }
 }
 
-/** Android 15+ draws under the system bars: keep the content clear of them. */
+/**
+ * Android 15+ draws under the system bars: keep the content clear of them. In landscape the
+ * navigation bar and the camera cutout are on the sides, so the left and right count too.
+ */
 fun View.padForSystemBars() = setOnApplyWindowInsetsListener { v, insets ->
-    val b = insets.getInsets(WindowInsets.Type.systemBars())
-    v.setPadding(context.dp(12), b.top + context.dp(8), context.dp(12), b.bottom + context.dp(8))
+    val b = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+    v.setPadding(b.left + context.dp(12), b.top + context.dp(8), b.right + context.dp(12), b.bottom + context.dp(8))
     insets
 }
 

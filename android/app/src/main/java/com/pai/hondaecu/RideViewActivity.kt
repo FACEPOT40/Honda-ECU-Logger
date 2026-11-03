@@ -24,6 +24,7 @@ class RideViewActivity : Activity() {
     private lateinit var cursorText: TextView
     private lateinit var valuesBtn: Button
     private lateinit var markerRow: LinearLayout
+    private lateinit var fullBtn: Button
     private var ride: RideData? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,7 +51,8 @@ class RideViewActivity : Activity() {
         markerRow = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
         markerRow.addView(uiButton("Summary") { showSummary() })
         markerRow.addView(uiButton("Cells") { openCells(name) })
-        markerRow.addView(uiButton("Full ride") { ride?.let { graph.setRange(it.start, it.end) } })
+        fullBtn = uiButton("Full ride") { ride?.let { graph.setRange(it.start, it.end) } }
+        markerRow.addView(fullBtn)
         root.addView(HorizontalScrollView(this).apply { addView(markerRow) })
 
         graph = GraphView(this).apply {
@@ -107,6 +109,9 @@ class RideViewActivity : Activity() {
 
     private fun updateCursorText() {
         val r = ride ?: return
+        // "Full ride" zooms back out: dimmed while the whole ride is already showing
+        val zoomedIn = graph.fromMs > r.start || graph.toMs < r.end
+        fullBtn.alpha = if (zoomedIn) 1f else 0.4f
         val c = graph.cursorMs
         cursorText.text = if (c == null) "Tap a graph to read every value at that moment. Pinch to zoom, drag sideways to move."
             else "Cursor ${CURSOR_CLOCK.format(Date(c))}  (+${formatDuration(c - r.start)})" +

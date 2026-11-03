@@ -50,7 +50,7 @@
         <activity
             android:name=".CellsActivity"
             android:exported="false"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="sensorLandscape" />
 
         <service
             android:name=".LoggerService"

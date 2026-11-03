@@ -38,30 +38,31 @@ class CellsActivity : Activity() {
             setBackgroundColor(Look.BACKGROUND)
             padForSystemBars()
         }
-        root.addView(uiText(15f, Color.WHITE, "Cell hits · ${intent.getStringExtra(EXTRA_NAME) ?: ""}"))
-        root.addView(uiText(12f, Look.GREY,
-            "Range ${clock.format(Date(from))} – ${clock.format(Date(to))} (what was in view). " +
-            "Rows = RPM, columns = TPS %, like the map in TunerPro."))
-        val modes = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        // landscape: a title line, one row of controls, the grid, then one line of details
+        root.addView(LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            addView(uiText(14f, Color.WHITE, "Cell hits · ${intent.getStringExtra(EXTRA_NAME) ?: ""}"),
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            addView(uiText(11f, Look.GREY, "Range ${clock.format(Date(from))} – ${clock.format(Date(to))}  ·  " +
+                "rows = RPM, columns = TPS %  ·  O2: blue = lean, orange/red = rich  ·  faint = under $MIN_SAMPLES samples"))
+        })
+        val controls = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
         for (m in CellGridView.Mode.values()) {
-            modeBtns[m] = uiButton(m.label) { setMode(m) }.also { modes.addView(it) }
+            modeBtns[m] = uiButton(m.label) { setMode(m) }.also { controls.addView(it) }
         }
-        root.addView(HorizontalScrollView(this).apply { addView(modes) })
         steadyBox = CheckBox(this).apply {
-            text = "Steady throttle only (O2 and injector)"
+            text = "Steady throttle only"
             setTextColor(Look.GREY)
             isChecked = true
             setOnCheckedChangeListener { _, _ -> refresh() }
         }
-        root.addView(steadyBox)
+        controls.addView(steadyBox)
+        root.addView(HorizontalScrollView(this).apply { addView(controls) })
 
         grid = CellGridView(this).apply { onSelect = { r, c -> showDetails(r, c) } }
         root.addView(grid, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
-        details = uiText(13f, Color.WHITE)
+        details = uiText(13f, Color.WHITE, "Drag to move around, tap a cell for its numbers.")
         root.addView(details)
-        root.addView(uiText(11f, Look.GREY,
-            "Drag to move around, tap a cell for its numbers. O2: blue = lean side (below 0.45 V), " +
-            "orange/red = rich. Faint cells in italics have under $MIN_SAMPLES samples: not reliable."))
         setContentView(root)
 
         setMode(CellGridView.Mode.O2)
@@ -92,9 +93,9 @@ class CellsActivity : Activity() {
     private fun showDetails(r: Int, c: Int) {
         val h = grid.hits ?: return
         val s = StringBuilder("${Cells.name(r, c)}: ${"%.1f".format(Locale.US, h.seconds[r][c])} s running")
-        if (h.n[r][c] > 0) s.append("\nO2 ${"%.2f".format(Locale.US, h.o2[r][c])} V average, " +
-            "${"%.0f".format(h.leanPct[r][c])} % lean · injector ${"%.2f".format(Locale.US, h.inj[r][c])} ms · ${h.n[r][c]} samples")
-        else s.append("\nNo steady fuel-on samples here")
+        if (h.n[r][c] > 0) s.append("  ·  O2 ${"%.2f".format(Locale.US, h.o2[r][c])} V average, " +
+            "${"%.0f".format(h.leanPct[r][c])} % lean  ·  injector ${"%.2f".format(Locale.US, h.inj[r][c])} ms  ·  ${h.n[r][c]} samples")
+        else s.append("  ·  no steady fuel-on samples here")
         details.text = s
     }
 
