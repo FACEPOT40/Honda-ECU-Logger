@@ -59,14 +59,24 @@ class KLine:
         if serial is None:
             raise RuntimeError("pyserial is not installed")
         self.echo = None
+        # write_timeout: a write to an unplugged cable must fail, not hang forever
         self.ser = serial.Serial(port, BAUD, bytesize=8, parity="N",
-                                 stopbits=1, timeout=timeout)
+                                 stopbits=1, timeout=timeout, write_timeout=1.0)
 
     def close(self):
         try:
             self.ser.close()
         except Exception:
             pass
+
+    def abort(self):
+        """From another thread: make a read or write that is waiting return now (Disconnect)."""
+        for cancel in (getattr(self.ser, "cancel_read", None), getattr(self.ser, "cancel_write", None)):
+            try:
+                if cancel:
+                    cancel()
+            except Exception:
+                pass
 
     def wake(self):
         self.ser.reset_input_buffer()

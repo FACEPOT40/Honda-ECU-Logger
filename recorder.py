@@ -58,7 +58,9 @@ class Recorder:
         self.f = open(self.path, "w", newline="", encoding="utf-8")
         self.w = csv.writer(self.f)
         self.w.writerow(COLUMNS)
+        self.f.flush()
         self.t0 = None
+        self.last_flush = 0
         return self.path
 
     def mark(self, label):
@@ -77,6 +79,9 @@ class Recorder:
         row += [self.pending_marker] + [s.get(k, "") for k in RAW]
         self.pending_marker = ""
         self.w.writerow(row)
+        if s["t"] - self.last_flush >= 1:      # a crash or power loss loses at most ~1 s
+            self.f.flush()
+            self.last_flush = s["t"]
 
     def stop(self):
         if self.f:

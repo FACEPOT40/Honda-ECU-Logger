@@ -94,6 +94,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(f"{APP_NAME} {VERSION}")
         self.resize(1250, 800)
         self.worker = None
+        self.stopping = []        # stopped polling threads that have not ended yet
         self.rec = Recorder()
         self.marker_n = 0
         self.window_s = 30
@@ -210,8 +211,7 @@ class MainWindow(QMainWindow):
 
     def toggle_connect(self):
         if self.worker:
-            self.worker.stop()
-            self.worker.wait(3000)
+            self.stop_worker(self.worker)
             self.worker = None
             self.connect_btn.setText("Connect")
             self.set_status("Disconnected")
@@ -227,6 +227,20 @@ class MainWindow(QMainWindow):
         self.worker.sample.connect(self.on_sample)
         self.worker.start()
         self.connect_btn.setText("Disconnect")
+
+    def stop_worker(self, w):
+        """Stop a polling thread. Never drop one that is still running: Qt aborts the whole
+        app then (the crash after unplugging the cable). A thread stuck on a vanished COM port
+        is kept in self.stopping until it ends; its late updates no longer reach the screen."""
+        for sig in (w.status, w.ecm, w.sample):
+            try:
+                sig.disconnect()
+            except (RuntimeError, TypeError):
+                pass
+        w.stop()
+        if not w.wait(3000):
+            self.stopping.append(w)
+            w.finished.connect(lambda: self.stopping.remove(w) if w in self.stopping else None)
 
     def set_status(self, text):
         color = "#43a047" if text.startswith("Connected") else \
@@ -316,8 +330,11 @@ class MainWindow(QMainWindow):
         if self.rec.active:
             self.rec.stop()
         if self.worker:
-            self.worker.stop()
-            self.worker.wait(3000)
+            self.stop_worker(self.worker)
+            self.worker = None
+        for w in list(self.stopping):     # still stuck: end it, or Qt aborts while quitting
+            w.terminate()
+            w.wait(2000)
         e.accept()
 
 

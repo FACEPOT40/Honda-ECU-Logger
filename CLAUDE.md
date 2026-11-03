@@ -70,6 +70,14 @@ may look unusual.
   app from a non-writable folder made `Recorder.start()` raise PermissionError silently. Now
   `recorder.default_log_dir()` (next to app/.exe, fallback Documents\HondaECULogger\logs) plus an
   error popup.
+- ~~PC app sometimes crashes when the cable is unplugged before Disconnect~~ (reported 3 Nov).
+  **Fixed 3 Nov**, confirmed with a fake link, not yet on the bike. Causes: a serial error in the
+  poll loop killed the thread silently (stale "Connected", port never closed), and Disconnect
+  dropped a QThread still stuck on the dead port after `wait(3000)`, which makes Qt abort the
+  process. Now `PollWorker` catches errors per connection and keeps retrying (replugging resumes
+  logging and a running recording), `stop()` cancels a blocked read/write (`KLine.abort`, plus
+  `write_timeout=1`), `MainWindow.stop_worker` keeps an unfinished thread in `self.stopping`
+  (terminated on quit), and `Recorder` flushes about once a second.
 - **M0 run on the real bike 24 Oct 2026** (key-on + engine-running logs, not committed).
   Link works (echo on, ~20 reads/s per table). Table 0x17 layout now follows the RE-ECU-th
   sheet, checked byte by byte against those logs; full map in the `decode.py` docstring.
