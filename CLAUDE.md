@@ -18,6 +18,10 @@ a look with `theme.role(btn, "primary" | "record")`. The cell table shades from 
 Android's `Look` (Ui.kt) has the same colors, and `Button.tone(Tone.PLAIN/PRIMARY/RECORD/STOP)`
 styles buttons (Connect blue, Start Record amber, Stop red, chosen option blue). Per-value colors
 (viewer.COLORS / Look.COLORS) are separate and unchanged.
+About (3 Nov): PC `AboutDialog` in app.py (Help → About) and phone `AboutActivity` (ⓘ button on
+the main screen) say the same things: name, version, read only, ride safe, tested bike, credits,
+GPL-3.0 + GitHub link (`REPO_URL`), Honda disclaimer. Keep both in step. Versions differ for now:
+PC `app.VERSION` 0.2.0, Android `versionName` 0.1.0.
 
 Windows desktop app (Python, PySide6 + pyqtgraph + pyserial) that logs live data from a
 Honda/Keihin K-line ECU and records rides to CSV. Owner: Pai (IT support, learning; explain

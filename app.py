@@ -11,7 +11,7 @@ from itertools import islice
 import pyqtgraph as pg
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction, QFont, QKeySequence, QShortcut
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog, QFrame, QGraphicsItem,
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog, QFileDialog, QFrame, QGraphicsItem,
                                QGridLayout, QHBoxLayout, QLabel, QMainWindow,
                                QMessageBox, QPushButton, QVBoxLayout, QWidget)
 
@@ -98,6 +98,61 @@ def build_graphs():
         for ax in ("left", "right"):
             p.plot.getAxis(ax).setCacheMode(QGraphicsItem.DeviceCoordinateCache)
     return widget, plots
+
+
+REPO_URL = "https://github.com/FACEPOT40/Honda-ECU-Logger"
+
+
+class AboutDialog(QDialog):
+    """Help → About: name, version, what the app does and doesn't do, credits, license.
+    The phone's AboutActivity.kt says the same."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(f"About {APP_NAME}")
+        self.setFixedWidth(520)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(24, 24, 24, 16)
+        lay.setSpacing(14)
+
+        head = QHBoxLayout()
+        head.setSpacing(16)
+        logo = QLabel()
+        logo.setPixmap(app_icon().pixmap(80, 80))
+        head.addWidget(logo, 0, Qt.AlignTop)
+        head.addWidget(QLabel(
+            f"<div style='font-size:20pt; font-weight:600'>{APP_NAME}</div>"
+            f"<div style='font-size:11pt; color:{theme.AMBER}'>{SUBTITLE} · version {VERSION}</div>"
+            f"<div style='color:{theme.MUTED}'>Live data logger for Honda / Keihin ECUs</div>"), 1)
+        lay.addLayout(head)
+
+        def section(title, text):
+            return (f"<p style='margin:0 0 10px 0'><b>{title}</b><br>"
+                    f"<span style='color:{theme.MUTED}'>{text}</span></p>")
+
+        body = QLabel(
+            section("Read only", "Reads live data and fault codes, nothing else. It never writes, "
+                                 "flashes or clears anything in the ECU.")
+            + section("Ride safe", "Never look at the screen while riding: record, ride, and look "
+                                   "at the graphs afterwards.")
+            + section("Tested on", "Honda Wave 125i (2021), ECU 38770-K73-T61, with an FTDI FT232R "
+                                   "K-line cable.")
+            + section("Thanks to", "AutotronicCommunity (K-line protocol notes) · HondaECU by "
+                                   "RyanHope / MCU Innovations (value formulas, fault-code reads, GPL-3.0) · "
+                                   "RE-ECU-th (PGM-FI live data sheet)")
+            + section("License", f"Made by Pai. GPL-3.0, free and open source: "
+                                 f"<a style='color:#4fc3f7' href='{REPO_URL}'>source on GitHub</a>")
+            + f"<p style='margin:0; color:{theme.MUTED}; font-size:8pt'>Not affiliated with or endorsed "
+              "by Honda Motor Co., Ltd. Honda is a trademark of its owner.</p>")
+        body.setWordWrap(True)
+        body.setTextFormat(Qt.RichText)
+        body.setOpenExternalLinks(True)
+        lay.addWidget(body)
+
+        close = theme.role(QPushButton("Close"), "primary")
+        close.clicked.connect(self.accept)
+        close.setDefault(True)
+        lay.addWidget(close, 0, Qt.AlignRight)
 
 
 class MainWindow(QMainWindow):
@@ -205,10 +260,7 @@ class MainWindow(QMainWindow):
         view.addAction(self.show_elapsed)
         helpm = self.menuBar().addMenu("Help")
         about = QAction("About", self)
-        about.triggered.connect(lambda: QMessageBox.information(
-            self, APP_NAME,
-            f"{APP_NAME} ({SUBTITLE}) {VERSION}\nRead-only live data logger for Honda/Keihin K-line ECUs.\n"
-            "Never look at the screen while riding.\nNot affiliated with Honda Motor Co."))
+        about.triggered.connect(lambda: AboutDialog(self).exec())
         helpm.addAction(about)
 
         QShortcut(QKeySequence("M"), self, activated=self.add_marker)

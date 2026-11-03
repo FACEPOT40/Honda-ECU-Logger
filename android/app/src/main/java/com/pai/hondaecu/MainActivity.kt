@@ -227,6 +227,7 @@ class MainActivity : Activity() {
             addView(heading, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
             addView(modeBtn)
             addView(valuesBtn)
+            addView(button("ⓘ") { startActivity(Intent(this@MainActivity, AboutActivity::class.java)) })
         })
 
         for (f in Decode.FIELDS) tiles[f.key] = tile(f)
