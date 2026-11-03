@@ -88,19 +88,31 @@ class GraphView(context: Context) : View(context) {
         var lo = Float.POSITIVE_INFINITY
         var hi = Float.NEGATIVE_INFINITY
         for (v in s.v) if (!v.isNaN()) { lo = minOf(lo, v); hi = maxOf(hi, v) }
-        if (f.key == "neutral") { lo = 0f; hi = 1f }
         if (lo > hi) {
             c.drawText("no data", p.left, p.centerY(), small)
             return
         }
-        if (hi - lo < 1e-6f) { val pad = max(abs(hi) * 0.05f, 1f); lo -= pad; hi += pad }
-        else if (f.key != "neutral") { val pad = (hi - lo) * 0.08f; lo -= pad; hi += pad }
+        val gear = f.key == "neutral"
+        val nonNegative = lo >= 0f          // e.g. TPS or speed: the margin must not show a negative scale
+        if (gear) { lo = -0.15f; hi = 1.15f }           // Gear / N with a little room above and below
+        else if (hi - lo < 1e-6f) {
+            // a flat line (Speed is always 0 on the Wave): keep whole-number labels
+            val pad = max(abs(hi) * 0.05f, 1f)
+            lo -= pad
+            hi += pad
+            if (nonNegative && lo < 0f) { hi -= lo; lo = 0f }
+        } else {
+            val pad = (hi - lo) * 0.08f
+            lo -= pad
+            hi += pad
+            if (nonNegative && lo < 0f) lo = 0f
+        }
         val y = { v: Float -> p.bottom - (v - lo) / (hi - lo) * p.height() }
         val x = { t: Long -> p.left + (t - since).toFloat() / windowMs * p.width() }
 
-        for (v in floatArrayOf(lo, (lo + hi) / 2, hi)) {
+        for (v in if (gear) floatArrayOf(0f, 1f) else floatArrayOf(lo, (lo + hi) / 2, hi)) {
             c.drawLine(p.left, y(v), p.right, y(v), grid)
-            val label = if (f.key == "neutral") Decode.fmtValue(f, v.toDouble()) else "%.${f.decimals}f".format(java.util.Locale.US, v)
+            val label = if (gear) Decode.fmtValue(f, v.toDouble()) else "%.${f.decimals}f".format(java.util.Locale.US, v)
             c.drawText(label, r.left + dp(6f), y(v) + dp(4f), small)
         }
 

@@ -35,7 +35,9 @@ changes briefly and plainly). License GPL-3.0. Full background: `docs/PLAN.md`.
   Live graphs (3 Nov): a Graphs/Tiles button switches the screen; `GraphView.kt` draws one colored
   panel per shown value over a 10/30/60 s window, with marker lines. `History.kt` keeps the last
   ~3,000 samples, filled by `LoggerService`, cleared on Connect; recording does not use it.
-  Unit-tested (`HistoryTest`), not yet seen on a screen. Recorded-ride graphs stay in the PC viewer.
+  Unit-tested (`HistoryTest`) and checked 3 Nov on a windowless emulator (`-no-window`, with
+  Pai's OK): graphs, window buttons, markers, filter, hidden values still fully in the CSV.
+  Recorded-ride graphs stay in the PC viewer.
   Don't start the emulator unless Pai asks: the window it opens from the command line doesn't fit
   Pai's display. Pai runs it from Android Studio's Device Manager.
 
