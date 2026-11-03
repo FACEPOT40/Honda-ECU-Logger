@@ -104,6 +104,12 @@ changes briefly and plainly). License GPL-3.0. Full background: `docs/PLAN.md`.
   `android/keystore.properties` (gitignored; template `keystore.properties.example`) pointing to
   Pai's keystore outside the project (`Documents\H-ECU-keys\h-ecu-release.jks`, alias `h-ecu`).
   Never read, print or commit the keystore or its password. No minify. Raise versionCode per release.
+  First real-ECU try on the phone (3 Nov, OTG): the cable was found but it never connected.
+  Likely cause, fixed the same day: `KLine.purgeInput` called `purgeHwBuffers(true, false)`,
+  which clears the WRITE buffer; the 00 left by the wake-up break stayed in the READ buffer, so
+  the echo check latched "no echo" and init never matched. Now it purges the read side (plus a
+  short drain) and only decides echo from a non-empty answer. The status chip now shows
+  "Waking ECU…" / "No reply" instead of a generic "Connecting…". Not yet retried on the bike.
   Don't start the emulator unless Pai asks: the window it opens from the command line doesn't fit
   Pai's display. Pai runs it from Android Studio's Device Manager.
 

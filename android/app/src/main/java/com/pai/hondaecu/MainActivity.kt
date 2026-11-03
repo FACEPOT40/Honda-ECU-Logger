@@ -242,6 +242,8 @@ class MainActivity : Activity() {
             !on -> "Not connected" to GREY
             Live.status.startsWith("Connected") -> (if (simulate) "Sim" else "ECU") to GREEN
             Live.status.startsWith("Error") || Live.status.startsWith("Disconnected") -> "Error" to RED
+            Live.status.startsWith("No reply") -> "No reply" to RED       // tap the chip for the full message
+            Live.status.startsWith("Waking") -> "Waking ECU…" to ORANGE
             else -> "Connecting…" to ORANGE
         }
         statusChip.text = SpannableString("● $label").apply {

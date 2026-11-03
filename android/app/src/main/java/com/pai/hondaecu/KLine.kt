@@ -35,9 +35,20 @@ class KLine(context: Context) : Link {
         }
     }
 
+    /** Like reset_input_buffer() on the PC: drop unread bytes, e.g. the 00 the wake-up break
+     *  leaves behind. (The arguments are purgeWriteBuffers, purgeReadBuffers: the READ buffer
+     *  is the one that matters; clearing only the write buffer left the 00 there, so the echo
+     *  check saw "00 FE 04 72", decided "no echo" and every reply was misread.) */
     private fun purgeInput() {
         pending = ByteArray(0)
-        port.purgeHwBuffers(true, false)
+        try {
+            port.purgeHwBuffers(false, true)
+        } catch (_: UnsupportedOperationException) {
+        }
+        // anything the chip had already passed on: read it away, briefly
+        val end = System.currentTimeMillis() + 20
+        while (System.currentTimeMillis() < end && port.read(readBuf, 5) > 0) {
+        }
     }
 
     override fun wake() {
@@ -65,7 +76,8 @@ class KLine(context: Context) : Link {
         purgeInput()
         port.write(msg, 500)
         val first = readExact(msg.size)      // K-line is single-wire: our bytes usually echo back
-        val hasEcho = echo ?: first.contentEquals(msg).also { echo = it }
+        // decide "echo or not" only from a clean answer: no answer at all says nothing yet
+        val hasEcho = echo ?: first.contentEquals(msg).also { if (first.isNotEmpty()) echo = it }
         return readReply(if (hasEcho) ByteArray(0) else first)
     }
 
