@@ -61,11 +61,13 @@ Output: `android\app\build\outputs\apk\debug\app-debug.apk`; copy it to the phon
 ### Release APK (for GitHub Releases)
 Signed with your own key, so every later version installs as an update.
 
-1. Once: create the signing key outside the project (it asks for a password; there is only one):
-   ```bat
-   mkdir "%USERPROFILE%\Documents\H-ECU-keys"
-   "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -genkeypair -keystore "%USERPROFILE%\Documents\H-ECU-keys\h-ecu-release.jks" -alias h-ecu -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=FACEPOT40"
+1. Once: create the signing key outside the project (it asks for a password; there is only one).
+   In PowerShell:
+   ```powershell
+   New-Item -ItemType Directory -Force "$env:USERPROFILE\Documents\H-ECU-keys"
+   & "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -genkeypair -keystore "$env:USERPROFILE\Documents\H-ECU-keys\h-ecu-release.jks" -alias h-ecu -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=FACEPOT40"
    ```
+   (In Command Prompt use `%USERPROFILE%` instead of `$env:USERPROFILE` and leave out the `&`.)
    Copy `android\keystore.properties.example` to `android\keystore.properties` and fill in the path and password. **Back up the `.jks` file and the password**: without them you can never publish an update. Neither ever goes into git.
 2. Each release: raise `versionCode` (and `versionName`) in `android\app\build.gradle.kts`, then
    ```bat
