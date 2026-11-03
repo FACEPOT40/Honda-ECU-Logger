@@ -50,6 +50,7 @@ class MainActivity : Activity() {
     private lateinit var simBox: CheckBox
     private lateinit var connectBtn: Button
     private lateinit var recordBtn: Button
+    private var recordTone: Tone? = null     // re-styled only when recording starts or stops
     private lateinit var markBtn: Button
     private lateinit var faultsBtn: Button
 
@@ -164,7 +165,7 @@ class MainActivity : Activity() {
             else -> "No faults"
         }
         faultsBtn.setTextColor(when {
-            f == null || !on || !f.supported -> Color.WHITE
+            f == null || !on || !f.supported -> Look.TEXT
             f.current.isNotEmpty() -> RED
             f.past.isNotEmpty() -> ORANGE
             else -> GREEN
@@ -172,6 +173,11 @@ class MainActivity : Activity() {
         connectBtn.text = if (on) "Disconnect" else "Connect"
         simBox.isEnabled = !on
         recordBtn.isEnabled = on
+        val recLook = if (Live.recording) Tone.STOP else Tone.RECORD
+        if (recLook != recordTone) {
+            recordBtn.tone(recLook)
+            recordTone = recLook
+        }
         recordBtn.text = if (Live.recording) "■ Stop" else "● Start Record"
         markBtn.isEnabled = Live.recording
         recText.setTextColor(if (Live.recordError.isEmpty() && Live.recording) RED else GREY)
@@ -248,8 +254,9 @@ class MainActivity : Activity() {
         simBox = CheckBox(this).apply {
             text = "Simulator"
             setTextColor(GREY)
+            buttonTintList = android.content.res.ColorStateList.valueOf(Look.BLUE)
         }
-        connectBtn = button("Connect") { onConnectClicked() }
+        connectBtn = uiButton("Connect", Tone.PRIMARY) { onConnectClicked() }
         root.addView(row(simBox, connectBtn))
         recordBtn = button("● Start Record") {
             send(if (Live.recording) LoggerService.ACTION_STOP_RECORD else LoggerService.ACTION_RECORD)
@@ -322,7 +329,7 @@ class MainActivity : Activity() {
 
     private fun setWindow(sec: Int) {
         windowMs = sec * 1000L
-        for ((s, b) in windowBtns) b.alpha = if (s == sec) 1f else 0.45f
+        for ((s, b) in windowBtns) b.tone(if (s == sec) Tone.PRIMARY else Tone.PLAIN)
         getSharedPreferences(PREFS, MODE_PRIVATE).edit().putInt(KEY_WINDOW, sec).apply()
         graphView.invalidate()
     }
@@ -365,11 +372,7 @@ class MainActivity : Activity() {
         addView(b, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
     }
 
-    private fun button(label: String, onClick: () -> Unit) = Button(this).apply {
-        text = label
-        isAllCaps = false
-        setOnClickListener { onClick() }
-    }
+    private fun button(label: String, onClick: () -> Unit) = uiButton(label, onClick = onClick)
 
     private fun text(size: Float, color: Int) = TextView(this).apply {
         textSize = size

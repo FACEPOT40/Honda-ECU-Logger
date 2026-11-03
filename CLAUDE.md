@@ -11,6 +11,13 @@ lightning bolt through the crossbar, on near-black #08090c. Source `assets/icon.
 and the .exe via `build_exe.bat`). Android: adaptive `res/drawable/ic_launcher*.xml` (same shapes,
 scaled 0.46 into the safe zone; `_mono` for themed icons) and the white notification icon `ic_app`.
 Keep all of them in step when the design changes.
+Colors (3 Nov): `theme.py` holds the brand palette (NIGHT #08090c, PANEL #141a22, LINE #232c38,
+BLUE #1976d2, AMBER #ffa000, TEXT, MUTED, status GREEN/ORANGE/RED) and `theme.apply(app)`: a dark
+Fusion palette + stylesheet, called in `app.main` and `viewer.main` before any window. Buttons get
+a look with `theme.role(btn, "primary" | "record")`. The cell table shades from PANEL, not white.
+Android's `Look` (Ui.kt) has the same colors, and `Button.tone(Tone.PLAIN/PRIMARY/RECORD/STOP)`
+styles buttons (Connect blue, Start Record amber, Stop red, chosen option blue). Per-value colors
+(viewer.COLORS / Look.COLORS) are separate and unchanged.
 
 Windows desktop app (Python, PySide6 + pyqtgraph + pyserial) that logs live data from a
 Honda/Keihin K-line ECU and records rides to CSV. Owner: Pai (IT support, learning; explain
@@ -42,6 +49,7 @@ changes briefly and plainly). License GPL-3.0. Full background: `docs/PLAN.md`.
   every 5th (`EVERY`), auto-reconnect)
 - `recorder.py`: CSV writer (wall-clock `timestamp` primary, `elapsed_s`, marker, raw bytes)
 - `app.py`: main window (live values, 4 dual-axis graphs, record, marker `M`)
+- `theme.py`: brand colors and the dark PC theme
 - `viewer.py`: ride viewer (tick values, one graph per value, presets, one-at-a-time, cursor readout,
   map cell at the cursor, "Cell hits (map table)" window)
 - `cells.py`: map cell math (3 Nov): the tune's RPM / TPS map axes (`RPM_AXIS`, `TPS_AXIS`, same

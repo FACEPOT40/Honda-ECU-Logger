@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog, 
                                QVBoxLayout, QWidget)
 
 import cells
+import theme
 from decode import FIELDS, fmt_value
 from recorder import default_log_dir
 
@@ -146,14 +147,14 @@ class LogViewer(QMainWindow):
             lbl, unit, _ = INFO[k]
             sw = QLabel()
             sw.setFixedSize(12, 12)
-            sw.setStyleSheet(f"background:{COLORS[k]}; border:1px solid #555; border-radius:2px")
+            sw.setStyleSheet(f"background:{COLORS[k]}; border:1px solid {theme.LINE}; border-radius:2px")
             cb = QCheckBox(f"{lbl} ({unit})" if unit else lbl)
             val = QLabel("-")
             val.setFont(QFont("Consolas", 11, QFont.Bold))
             val.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             val.setMinimumWidth(70)
             stat = QLabel("")
-            stat.setStyleSheet("color:#888; font-size:8pt")
+            stat.setStyleSheet(f"color:{theme.MUTED}; font-size:8pt")
             if k not in self.data or np.all(np.isnan(self.data[k])):
                 cb.setEnabled(False)
                 cb.setText(cb.text() + "  (no data)")
@@ -165,7 +166,7 @@ class LogViewer(QMainWindow):
             self.checks[k], self.val_lbl[k], self.stat_lbl[k] = cb, val, stat
         pv.addLayout(grid)
         note = QLabel("Grey text = min · avg · max of the time range in view")
-        note.setStyleSheet("color:#888; font-size:8pt")
+        note.setStyleSheet(f"color:{theme.MUTED}; font-size:8pt")
         pv.addWidget(note)
 
         btns = QHBoxLayout()
@@ -194,7 +195,7 @@ class LogViewer(QMainWindow):
 
         hint = QLabel("Mouse wheel: zoom time · Drag: pan · Right-click: more options")
         hint.setWordWrap(True)
-        hint.setStyleSheet("color:#888; font-size:8pt")
+        hint.setStyleSheet(f"color:{theme.MUTED}; font-size:8pt")
         pv.addWidget(hint)
 
         # ---------------- graphs
@@ -293,7 +294,7 @@ class LogViewer(QMainWindow):
         except Exception:
             pass
         if not sel:
-            self.glw.addLabel("Tick a value on the left to show its graph", color="#aaa", size="12pt")
+            self.glw.addLabel("Tick a value on the left to show its graph", color=theme.MUTED, size="12pt")
             self.update_stats()
             return
         first = None
@@ -326,7 +327,7 @@ class LogViewer(QMainWindow):
             p.addItem(v, ignoreBounds=True)
             self.vlines.append(v)
             dot = pg.ScatterPlotItem(size=8, pen=pg.mkPen("#000000"), brush=pg.mkBrush(COLORS[k]))
-            text = pg.TextItem(color=COLORS[k], fill=pg.mkBrush(20, 20, 20, 200))
+            text = pg.TextItem(color=COLORS[k], fill=pg.mkBrush(20, 26, 34, 220))
             text.setFont(QFont("Consolas", 10, QFont.Bold))
             for item in (dot, text):
                 item.setVisible(False)
@@ -459,11 +460,12 @@ class LogViewer(QMainWindow):
 
 
 def _blend(color, f):
-    """White blended toward color by f (0..1), like the shading of a TunerPro map."""
+    """The dark panel color blended toward color by f (0..1), like the shading of a TunerPro
+    map (and CellGridView.kt on the phone)."""
     f = float(np.clip(f, 0, 1))
-    c = QColor(color)
-    return QColor(int(255 + (c.red() - 255) * f), int(255 + (c.green() - 255) * f),
-                  int(255 + (c.blue() - 255) * f))
+    c, b = QColor(color), QColor(theme.PANEL)
+    return QColor(int(b.red() + (c.red() - b.red()) * f), int(b.green() + (c.green() - b.green()) * f),
+                  int(b.blue() + (c.blue() - b.blue()) * f))
 
 
 class CellHitsWindow(QWidget):
@@ -515,10 +517,10 @@ class CellHitsWindow(QWidget):
         legend = QLabel(
             "Rows = RPM, columns = TPS %, the same axes as the fuel and ignition maps in TunerPro. "
             "Each moment counts in its nearest cell. O2 colors: blue = lean side (below 0.45 V), "
-            "orange / red = rich. Pale cells in italics = fewer than 5 samples, not reliable. "
+            "orange / red = rich. Faded cells in italics = fewer than 5 samples, not reliable. "
             "Zoom or move the graphs to look at part of the ride; the cursor's cell is selected.")
         legend.setWordWrap(True)
-        legend.setStyleSheet("color:#666")
+        legend.setStyleSheet(f"color:{theme.MUTED}")
         lay.addWidget(legend)
 
     def refresh(self):
@@ -541,12 +543,14 @@ class CellHitsWindow(QWidget):
                 if not empty:
                     bg = self.color(key, x, top)
                     if key != "seconds" and n[r, c] < self.MIN_SAMPLES:
-                        # too few samples to trust: a pale cell in italics, still readable
-                        bg = QColor((bg.red() + 2 * 255) // 3, (bg.green() + 2 * 255) // 3, (bg.blue() + 2 * 255) // 3)
+                        # too few samples to trust: a faded cell in italics, still readable
+                        b = QColor(theme.PANEL)
+                        bg = QColor((bg.red() + 2 * b.red()) // 3, (bg.green() + 2 * b.green()) // 3,
+                                    (bg.blue() + 2 * b.blue()) // 3)
                         font = item.font()
                         font.setItalic(True)
                         item.setFont(font)
-                        item.setForeground(QBrush(QColor("#666666")))
+                        item.setForeground(QBrush(QColor(theme.MUTED)))
                     item.setBackground(QBrush(bg))
                 item.setToolTip(self.tooltip(h, r, c))
                 self.table.setItem(r, c, item)
@@ -584,6 +588,7 @@ def app_icon():
 def main():
     pg.setConfigOptions(antialias=True)
     app = QApplication(sys.argv)
+    theme.apply(app)
     app.setWindowIcon(app_icon())
     path = sys.argv[1] if len(sys.argv) > 1 else \
         QFileDialog.getOpenFileName(None, "Open ride log", default_log_dir(), "CSV (*.csv)")[0]

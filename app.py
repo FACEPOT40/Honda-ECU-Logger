@@ -11,12 +11,13 @@ from itertools import islice
 import pyqtgraph as pg
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction, QFont, QKeySequence, QShortcut
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog, QGraphicsItem,
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog, QFrame, QGraphicsItem,
                                QGridLayout, QHBoxLayout, QLabel, QMainWindow,
                                QMessageBox, QPushButton, QVBoxLayout, QWidget)
 
 from decode import FIELDS, alerts, dtc_text, fmt_value
 from kline import list_ports
+import theme
 from recorder import Recorder
 from viewer import LogViewer, app_icon
 from worker import PollWorker
@@ -125,7 +126,7 @@ class MainWindow(QMainWindow):
         refresh.setFixedWidth(32)
         refresh.clicked.connect(self.refresh_ports)
         self.sim_box = QCheckBox("Simulator")
-        self.connect_btn = QPushButton("Connect")
+        self.connect_btn = theme.role(QPushButton("Connect"), "primary")
         self.connect_btn.clicked.connect(self.toggle_connect)
         self.status_lbl = QLabel("● Disconnected")
         self.ecm_lbl = QLabel("ECM: -")
@@ -144,7 +145,7 @@ class MainWindow(QMainWindow):
 
         # --- row 2: recording
         r2 = QHBoxLayout()
-        self.rec_btn = QPushButton("● Start Record")
+        self.rec_btn = theme.role(QPushButton("● Start Record"), "record")
         self.rec_btn.clicked.connect(self.start_record)
         self.stop_btn = QPushButton("■ Stop")
         self.stop_btn.clicked.connect(self.stop_record)
@@ -188,7 +189,7 @@ class MainWindow(QMainWindow):
             grid.addWidget(u, i, 2)
             self.value_lbl[k] = val
         grid.setRowStretch(len(FIELDS), 1)
-        left = QWidget()
+        left = QFrame(objectName="panel")
         left.setLayout(grid)
         left.setFixedWidth(280)
         body.addWidget(left)
@@ -263,13 +264,13 @@ class MainWindow(QMainWindow):
     def on_faults(self, res):
         self.faults = res
         if not res["supported"]:
-            text, color = "Faults: not readable", "#888888"
+            text, color = "Faults: not readable", theme.MUTED
         elif res["current"]:
-            text, color = f"Faults: {len(res['current'])} current, {len(res['past'])} past", "#e53935"
+            text, color = f"Faults: {len(res['current'])} current, {len(res['past'])} past", theme.RED
         elif res["past"]:
-            text, color = f"Faults: {len(res['past'])} past", "#fb8c00"
+            text, color = f"Faults: {len(res['past'])} past", theme.ORANGE
         else:
-            text, color = "Faults: none", "#43a047"
+            text, color = "Faults: none", theme.GREEN
         self.faults_btn.setText(text)
         self.faults_btn.setStyleSheet(f"color:{color}; font-weight:bold")
 
@@ -285,7 +286,7 @@ class MainWindow(QMainWindow):
                 body += f"<b>{title}</b><br>"
                 body += "<br>".join(dtc_text(m, s) for m, s in res[key]) if res[key] else "none"
                 body += "<br><br>"
-            body += ("<span style='color:#888'>The number before the dash is the MIL blink count. "
+            body += (f"<span style='color:{theme.MUTED}'>The number before the dash is the MIL blink count. "
                      "Names are the usual Honda PGM-FI groups: check the Wave 125i service manual. "
                      "This app only reads codes; it never clears them.</span>")
         box = QMessageBox(self)
@@ -300,8 +301,8 @@ class MainWindow(QMainWindow):
             self.worker.request_faults()
 
     def set_status(self, text):
-        color = "#43a047" if text.startswith("Connected") else \
-            "#e53935" if text.startswith(("Error", "Disconnected")) else "#fb8c00"
+        color = theme.GREEN if text.startswith("Connected") else \
+            theme.RED if text.startswith(("Error", "Disconnected")) else theme.ORANGE
         self.status_lbl.setText(f"<span style='color:{color}'>●</span> {text}")
 
     # ------------------------------------------------------------ data
@@ -315,7 +316,7 @@ class MainWindow(QMainWindow):
             v = s.get(k)
             lbl = self.value_lbl[k]
             lbl.setText(fmt_value(k, v))
-            lbl.setStyleSheet("color:#e53935" if k in bad else "")
+            lbl.setStyleSheet(f"color:{theme.RED}" if k in bad else "")
         self.rec.write(s)
 
     def tick(self):
@@ -323,7 +324,7 @@ class MainWindow(QMainWindow):
         clock = dt.datetime.now().strftime("%H:%M:%S")
         if self.rec.active:
             self.clock_lbl.setText(
-                f"<span style='color:#e53935'>● REC</span> {clock} "
+                f"<span style='color:{theme.RED}'>● REC</span> {clock} "
                 f"(started {self.rec.started_at:%H:%M:%S})")
             el = int((dt.datetime.now() - self.rec.started_at).total_seconds())
             self.elapsed_lbl.setText(f"+{el // 60:02d}:{el % 60:02d}")
@@ -403,6 +404,7 @@ class MainWindow(QMainWindow):
 def main():
     pg.setConfigOptions(antialias=True)
     app = QApplication(sys.argv)
+    theme.apply(app)
     app.setApplicationName(APP_NAME)
     app.setWindowIcon(app_icon())
     if sys.platform == "win32":  # own taskbar icon, not python.exe's, when run from source

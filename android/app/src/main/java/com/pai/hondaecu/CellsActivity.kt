@@ -81,7 +81,7 @@ class CellsActivity : Activity() {
 
     private fun setMode(m: CellGridView.Mode) {
         grid.mode = m
-        for ((mode, b) in modeBtns) b.alpha = if (mode == m) 1f else 0.45f
+        for ((mode, b) in modeBtns) b.tone(if (mode == m) Tone.PRIMARY else Tone.PLAIN)
         refresh()
     }
 

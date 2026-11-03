@@ -2,7 +2,11 @@ package com.pai.hondaecu
 
 import android.app.AlertDialog
 import android.content.Context
+import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.InsetDrawable
+import android.graphics.drawable.RippleDrawable
 import android.view.View
 import android.view.WindowInsets
 import android.widget.Button
@@ -16,10 +20,35 @@ fun Context.uiText(size: Float, color: Int, value: String = "") = TextView(this)
     text = value
 }
 
-fun Context.uiButton(label: String, onClick: () -> Unit) = Button(this).apply {
+fun Context.uiButton(label: String, tone: Tone = Tone.PLAIN, onClick: () -> Unit) = Button(this).apply {
     text = label
     isAllCaps = false
     setOnClickListener { onClick() }
+    tone(tone)
+}
+
+/** Button looks, like the PC's theme.py: PRIMARY = blue (Connect, chosen option),
+ *  RECORD = amber (Start Record), STOP = red (Stop while recording). */
+enum class Tone { PLAIN, PRIMARY, RECORD, STOP }
+
+fun Button.tone(t: Tone) {
+    val (fill, edge, label) = when (t) {
+        Tone.PLAIN -> Triple(Look.TILE, Look.LINE, Look.TEXT)
+        Tone.PRIMARY -> Triple(Look.BLUE, Look.BLUE, Color.WHITE)
+        Tone.RECORD -> Triple(Look.AMBER, Look.AMBER, Look.BACKGROUND)
+        Tone.STOP -> Triple(Look.RED, Look.RED, Color.WHITE)
+    }
+    val states = arrayOf(intArrayOf(-android.R.attr.state_enabled), intArrayOf())
+    val shape = GradientDrawable().apply {
+        cornerRadius = context.dp(8).toFloat()
+        color = ColorStateList(states, intArrayOf(Look.TILE, fill))
+        setStroke(context.dp(1), ColorStateList(states, intArrayOf(Look.TILE, edge)))
+    }
+    val gap = context.dp(3)    // the space between buttons the default look had
+    background = RippleDrawable(ColorStateList.valueOf(0x33FFFFFF), InsetDrawable(shape, gap), null)
+    setTextColor(ColorStateList(states, intArrayOf(Look.DISABLED, label)))
+    stateListAnimator = null
+    setPadding(context.dp(12), context.dp(10), context.dp(12), context.dp(10))
 }
 
 /**
@@ -38,7 +67,8 @@ fun formatDuration(ms: Long): String {
     return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, s / 60 % 60, s % 60) else "%d:%02d".format(s / 60, s % 60)
 }
 
-/** Colors shared by every screen. Value colors are the same as COLORS in viewer.py. */
+/** Colors shared by every screen: the brand colors are the icon's and theme.py's on the PC.
+ *  Value colors are the same as COLORS in viewer.py. */
 object Look {
     val COLORS = mapOf(
         "rpm" to "#4fc3f7", "tps_pct" to "#ffb74d", "ect_c" to "#ef5350",
@@ -46,9 +76,14 @@ object Look {
         "ign_deg" to "#fff176", "o2_v" to "#f06292", "stft" to "#e0e0e0",
         "mode_d14" to "#90a4ae", "neutral" to "#a1887f",
     ).mapValues { Color.parseColor(it.value) }
-    val BACKGROUND = Color.parseColor("#101214")
-    val TILE = Color.parseColor("#1E2226")
-    val GREY = Color.parseColor("#A0A8B0")
+    val BACKGROUND = Color.parseColor("#08090C")
+    val TILE = Color.parseColor("#141A22")
+    val LINE = Color.parseColor("#232C38")
+    val BLUE = Color.parseColor("#1976D2")
+    val AMBER = Color.parseColor("#FFA000")
+    val TEXT = Color.parseColor("#E8EDF3")
+    val GREY = Color.parseColor("#8A96A6")
+    val DISABLED = Color.parseColor("#4A5462")
     val GREEN = Color.parseColor("#43A047")
     val ORANGE = Color.parseColor("#FB8C00")
     val RED = Color.parseColor("#EF5350")
