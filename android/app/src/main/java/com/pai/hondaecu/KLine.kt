@@ -71,24 +71,24 @@ class KLine(context: Context) : Link {
         return out
     }
 
-    override fun send(msg: ByteArray): ByteArray? {
+    override fun send(msg: ByteArray, timeoutMs: Long): ByteArray? {
         Protocol.requireAllowed(msg)
         purgeInput()
         port.write(msg, 500)
-        val first = readExact(msg.size)      // K-line is single-wire: our bytes usually echo back
+        val first = readExact(msg.size, timeoutMs)   // K-line is single-wire: our bytes usually echo back
         // decide "echo or not" only from a clean answer: no answer at all says nothing yet
         val hasEcho = echo ?: first.contentEquals(msg).also { if (first.isNotEmpty()) echo = it }
-        return readReply(if (hasEcho) ByteArray(0) else first)
+        return readReply(if (hasEcho) ByteArray(0) else first, timeoutMs)
     }
 
-    private fun readReply(pre: ByteArray): ByteArray? {
+    private fun readReply(pre: ByteArray, timeoutMs: Long): ByteArray? {
         var hdr = pre.copyOf(minOf(2, pre.size))
-        if (hdr.size < 2) hdr += readExact(2 - hdr.size)
+        if (hdr.size < 2) hdr += readExact(2 - hdr.size, timeoutMs)
         if (hdr.size < 2) return null
         val length = hdr[1].toInt() and 0xFF
         val out = ByteArrayOutputStream()
         out.write(pre.copyOfRange(hdr.size.coerceAtMost(pre.size), pre.size))
-        if (length > 2 && out.size() < length - 2) out.write(readExact(length - 2 - out.size()))
+        if (length > 2 && out.size() < length - 2) out.write(readExact(length - 2 - out.size(), timeoutMs))
         val reply = hdr + out.toByteArray()
         return if (reply.sumOf { it.toInt() and 0xFF } and 0xFF == 0) reply else null
     }

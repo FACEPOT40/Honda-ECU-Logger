@@ -61,7 +61,7 @@ object Protocol {
         var supported = false
         for (query in listOf(DTC_CURRENT, DTC_PAST)) {
             for (page in 1..Decode.DTC_PAGES) {
-                val r = link.send(queryMsg(page, query)) ?: break     // no answer: not supported / no more
+                val r = link.send(queryMsg(page, query), Poller.REPLY_MS) ?: break     // no answer: not supported / no more
                 supported = true
                 val d = payload(r, page)
                 if (d.isEmpty()) break                                  // no such page
@@ -78,6 +78,7 @@ object Protocol {
 /** Something that can exchange K-line messages: the real cable or the simulator. */
 interface Link {
     fun wake()
-    fun send(msg: ByteArray): ByteArray?
+    /** Send one whitelisted message; wait up to [timeoutMs] for each part of the reply. */
+    fun send(msg: ByteArray, timeoutMs: Long = 600): ByteArray?
     fun close()
 }

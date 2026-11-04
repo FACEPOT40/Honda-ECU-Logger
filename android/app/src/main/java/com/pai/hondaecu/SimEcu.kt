@@ -11,7 +11,7 @@ class SimEcu : Link {
     override fun wake() = Thread.sleep(190)
     override fun close() {}
 
-    override fun send(msg: ByteArray): ByteArray? {
+    override fun send(msg: ByteArray, timeoutMs: Long): ByteArray? {
         Protocol.requireAllowed(msg)
         Thread.sleep(20)
         if (msg.contentEquals(Protocol.WAKE_MSG)) return Protocol.hex("0E 04 72 7C")

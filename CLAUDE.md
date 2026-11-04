@@ -22,8 +22,8 @@ About (3 Nov): PC `AboutDialog` in app.py (Help → About) and phone `AboutActiv
 the main screen) say the same things: name, version, read only, ride safe, tested bike, credits,
 GPL-3.0 + GitHub link (`REPO_URL`), Honda disclaimer, "Made by FACEPOT40" (Pai's GitHub name).
 Keep both in step.
-Versions: both apps 0.3.0 since the rebrand (3 Nov): PC `app.VERSION`, Android `versionName`
-(+ `versionCode` 2; raise versionCode on every phone release). Bump both together.
+Versions: both apps 0.3.1 since 4 Nov (0.3.0 = the 3 Nov rebrand): PC `app.VERSION`, Android
+`versionName` (+ `versionCode` 3; raise versionCode on every phone release). Bump both together.
 
 Windows desktop app (Python, PySide6 + pyqtgraph + pyserial) that logs live data from a
 Honda/Keihin K-line ECU and records rides to CSV. Owner: Pai (IT support, learning; explain
@@ -122,6 +122,18 @@ changes briefly and plainly). License GPL-3.0. Full background: `docs/PLAN.md`.
   (ride_20261103_205857, 2.3 min around the house, not committed): connects, records, 17.7
   samples/s (PC: ~11.6), no gaps over 79 ms, GPS fix 100 % of samples (max 33.8 km/h), values
   plausible (ECT 66-77 °C warming up, battery ~12.0 V at idle / 13.2-13.4 V above 2,500 rpm).
+  Dropouts (4 Nov, v0.3.1): a loose Type-C plug on a bumpy road lost 51 x ~2.8 s (24 % of a ride)
+  to full reconnects (wake, init, ECM ID, ~22 fault-code queries). `Poller` now reads fault codes
+  once per Connect (or on request), not after each reconnect; table queries time out after 300 ms
+  (`REPLY_MS`) and 3 empty cycles (`MAX_MISSES`) trigger a re-wake; the wake message waits only
+  150 ms for its optional answer; a USB error retries after 300 ms (was 2 s). `PollerTest`: a
+  1.5 s silence gives a 1.52 s gap and no second fault read. Not yet tried on the bike; the real
+  fix is a firmer plug (Pai knows it is loose). PC `worker.py` unchanged (its cable doesn't bounce).
+  Logs tab (4 Nov): each log has ⋮ (Open, Rename, Delete, Select); Select or a long press picks
+  several (All / None, Delete with a confirm). Rename keeps `.csv`, refuses bad characters and
+  existing names. The app's own files change directly; files from before a reinstall go through
+  the system's MediaStore write / delete request. The file being recorded can't be renamed or
+  deleted. Built; not yet seen on the phone.
   Don't start the emulator unless Pai asks: the window it opens from the command line doesn't fit
   Pai's display. Pai runs it from Android Studio's Device Manager.
 
