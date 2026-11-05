@@ -12,16 +12,19 @@ There are two apps in this repo, and both record the same CSV format:
 - **Windows app**: live screen, recording, ride viewer and map-cell table. Described below.
 - **Android app** (`android/`): a phone recorder for the handlebar, so you don't need to carry the laptop. See [Android app](#android-app).
 
+**Download:** [Windows installer (x64)](https://github.com/FACEPOT40/Honda-ECU-Logger/releases/tag/Windows-Installer) · [Android APK](https://github.com/FACEPOT40/Honda-ECU-Logger/releases/tag/Android-Package-Kit)
+
 ![Live screen](docs/images/pc-live.png)
 *Live screen, here in Simulator mode: values on the left, four dual-axis graphs on the right.*
 
 ## What you need
-- A Windows 10 / 11 PC
+- A 64-bit Windows 10 / 11 PC
 - An **FTDI FT232R USB-to-K-line cable** for the bike's 4-pin diagnostic connector (DLC)
 - A Honda with a Keihin K-line ECU. Tested on a **Honda Wave 125i (2021)**, ECU 38770-K73-T61. Other K-line Hondas will probably work, but values may need checking (see [Other bikes](#other-bikes)).
 
 ## Install
-1. Download **`H-ECU-Logger-Setup-<version>.exe`** from [Releases](https://github.com/FACEPOT40/Honda-ECU-Logger/releases).
+1. Download **`H-ECU-Logger-Setup-<version>.exe`** from the [Windows installer release](https://github.com/FACEPOT40/Honda-ECU-Logger/releases/tag/Windows-Installer).
+   - It's for **64-bit Windows (x64) only**. There's no 32-bit (x86) version: the Qt library the app uses (PySide6) only comes in 64-bit for Windows.
 2. Run it. It installs the app with Start menu shortcuts and an uninstall entry. It also installs FTDI's official cable driver (ticked by default; untick it if your cable already works).
 3. Start **H-ECU Logger**. Tick **Simulator** and press **Connect** to try it without a bike.
 
@@ -82,7 +85,7 @@ A recorder for the phone on your handlebar. It uses the same FTDI cable and save
 - **No driver to install.** The app talks to the FTDI chip itself. On the first connect Android asks to allow the app to use the USB device; press Allow.
 
 ### Install
-1. Download **`H-ECU-Logger-<version>.apk`** from [Releases](https://github.com/FACEPOT40/Honda-ECU-Logger/releases) on the phone.
+1. On the phone, download **`H-ECU-Logger-<version>.apk`** from the [Android APK release](https://github.com/FACEPOT40/Honda-ECU-Logger/releases/tag/Android-Package-Kit).
 2. Open it and allow installing from this source when Android asks.
 3. Later versions install over it and keep your settings and logs.
 
