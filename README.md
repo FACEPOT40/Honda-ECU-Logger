@@ -10,7 +10,7 @@ You can't look at a screen while riding. So: connect, press **Start Record**, ri
 
 There are two apps in this repo, and both record the same CSV format:
 - **Windows app**: live screen, recording, ride viewer and map-cell table. Described below.
-- **Android app** (`android/`): a phone recorder for the handlebar, so you don't need to carry the laptop. Its own section is coming soon.
+- **Android app** (`android/`): a phone recorder for the handlebar, so you don't need to carry the laptop. See [Android app](#android-app).
 
 ![Live screen](docs/images/pc-live.png)
 *Live screen, here in Simulator mode: values on the left, four dual-axis graphs on the right.*
@@ -70,6 +70,81 @@ Open a ride with **Open CSV**, by dropping a CSV onto the app, or with `python v
 - It covers the time range in view, so you can zoom the graphs to look at one part of a ride.
 - O2 is only counted with the engine fuelling and the sensor warm.
 
+## Android app
+A recorder for the phone on your handlebar. It uses the same FTDI cable and saves the same CSV, so phone rides open in the PC viewer too.
+
+<p align="center"><img src="docs/images/android-on-bike.gif" width="300" alt="The phone app on the handlebar, connected to the bike"></p>
+<p align="center"><em>On the bike: connected to the ECU, engine idling.</em></p>
+
+### What you need
+- An Android phone (Android 10 or newer) with **USB OTG**.
+- An **OTG adapter** (USB-C to USB-A) and the same FTDI K-line cable. An L-shaped adapter sits firmer on bumpy roads.
+- **No driver to install.** The app talks to the FTDI chip itself. On the first connect Android asks to allow the app to use the USB device; press Allow.
+
+### Install
+1. Download **`H-ECU-Logger-<version>.apk`** from [Releases](https://github.com/FACEPOT40/Honda-ECU-Logger/releases) on the phone.
+2. Open it and allow installing from this source when Android asks.
+3. Later versions install over it and keep your settings and logs.
+
+### Live and recording
+
+<table>
+<tr>
+<td width="50%"><img src="docs/images/android-live.jpg" alt="Live tiles"></td>
+<td>
+
+- **Made for an upright phone on the handlebar.** Tabs at the top: **Live | Graphs | Logs**.
+- **Live tiles** in the same colors as the PC app. They share the screen, so the fewer values you show, the bigger the numbers. **Filter** (⋮ menu) picks the values; hidden values are still recorded.
+- **Graphs** tab: live graphs over 10 / 30 / 60 s, with marker lines.
+- **Big buttons at the bottom:** **Connect** and **Start Record**. While recording they become **⚑ Marker** (the phone buzzes) and **■ Stop**. Stop needs a long press, so a bump can't end the recording.
+- **Status chips at the top:** connection (tap for the ECM ID) and fault codes (tap for the list).
+- **Keeps recording with the screen off.**
+- **Reconnects by itself** if the plug loses contact on a bump. A running recording carries on.
+- **GPS speed** from the phone, in the `gps_kmh` column. Only the speed is stored, never your location.
+- **Simulator** in the ⋮ menu, to try it without a bike. The screenshot is in Simulator mode.
+
+</td>
+</tr>
+</table>
+
+### Settings (⋮ → Settings)
+- **Keep screen on:** while connected (default), while recording, always or never.
+- **Alert limits** per value: low and / or high. The value turns red at or beyond its limit.
+  - Defaults: engine temp ≥ 120 °C, battery ≤ 12.5 V above 1,500 rpm.
+  - The O2 lean warning has its own switch.
+- **Red screen on alerts:** the whole screen fades red, so you notice without reading numbers. There's no sound or vibration.
+- **Auto record** (off by default):
+  - Auto-start when the engine starts.
+  - Auto-stop after the engine has been off for 10 / 30 / 60 s.
+
+### Logs
+
+<table>
+<tr>
+<td width="50%"><img src="docs/images/android-ride.jpg" alt="Recorded ride on the phone"></td>
+<td>
+
+- **Logs** lists your recorded rides. **Open other file** opens a CSV from the laptop too.
+- **Manage logs:** each log's ⋮ menu has Open, Rename and Delete. A long press selects several, to delete them together.
+- **Ride view:** one graph per value.
+  - Pinch to zoom, drag to move, tap for a cursor.
+  - min / avg / max for the range in view.
+  - Buttons jump to each marker.
+- The cursor also names the **map cell** (RPM × TPS) the engine was in.
+- **Summary** shows:
+  - Ride length, and running / idle / fuel-cut time.
+  - Max RPM and TPS, injector duty.
+  - Engine temp and time at ≥ 120 °C, low battery.
+  - GPS speed, O2 lean share and the 3 leanest map cells.
+
+</td>
+</tr>
+</table>
+
+**Cells** is the phone version of the PC's cell hits table. It shows time, O2, lean %, injector time or sample count per map cell, with the same steady-throttle filter. Turn the phone sideways; pinch to zoom, double-tap a cell to zoom in, and tap a cell for its details.
+
+![Cell table on the phone](docs/images/android-cells.jpg)
+
 ## CSV columns
 `timestamp, elapsed_s, rpm, tps_pct, ect_c, batt_v, speed_kmh, inj_ms, ign_deg, o2_v, stft, mode_d14, neutral, gps_kmh, marker, raw_17, raw_20, raw_d1`
 
@@ -120,15 +195,16 @@ The installer needs:
 - [Inno Setup 6](https://jrsoftware.org/isinfo.php) (`winget install JRSoftware.InnoSetup`).
 - FTDI's VCP driver package from ftdichip.com, unzipped as `CDM-v2.12.36.20-WHQL-Certified` in this folder. It isn't in git because it's FTDI's.
 
-<details>
-<summary>Android build (details coming soon)</summary>
-
-Build with Android Studio, or from the command line with `JAVA_HOME` set to Android Studio's `jbr`:
+### Android build
+Open `android/` in Android Studio, or build from the command line with `JAVA_HOME` set to Android Studio's `jbr`:
 ```bat
 android\gradlew.bat testDebugUnitTest assembleDebug
 ```
-A signed release APK comes from `build_apk_release.bat`. It needs your own signing key in `android\keystore.properties`; copy `android\keystore.properties.example` to start. Keep the key and its password backed up and out of git.
-</details>
+Output: `android\app\build\outputs\apk\debug\app-debug.apk`. The unit tests check the decoding against the Python app's values.
+
+For a signed release APK, run `build_apk_release.bat`. Output: `dist\H-ECU-Logger-<version>.apk`.
+- It needs your own signing key: copy `android\keystore.properties.example` to `android\keystore.properties` and fill it in.
+- Keep the key and its password backed up and out of git. Without them you can't publish updates that install over the old version.
 
 ## Credits
 - Protocol notes: [AutotronicCommunity/Honda_Keihin_KLine_Protocol](https://github.com/AutotronicCommunity/Honda_Keihin_KLine_Protocol)
