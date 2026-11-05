@@ -24,3 +24,6 @@ tune/
 *.jks
 *.keystore
 keystore.properties
+
+# Claude's working notes, kept local only
+CLAUDE.md

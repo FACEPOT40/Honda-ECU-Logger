@@ -1,136 +1,141 @@
 # H-ECU Logger (K-line)
 
-**K-line live data logger for Honda / Keihin ECUs.**
+**A live data logger for Honda / Keihin K-line motorcycle ECUs.** Record what the ECU sees while you ride, then study the ride afterwards as graphs and as a map-cell table, to check your road tuning.
 
-Record live ECU data from Honda/Keihin K-line motorcycles while you ride, then review the logs as graphs afterwards to check your road-tuning results.
+You can't look at a screen while riding. So: connect, press **Start Record**, ride, press **Stop**, and look at the log at home.
 
-You can't look at a screen while riding. So: connect, press **Start Record**, ride, press **Stop**, and analyze the timestamped CSV later (in the app or in Excel).
-
-There are two apps in this repo, recording the same CSV format:
-- **Windows app** (Python): live screen, recording and the full ride viewer
-- **Android app** (`android/`): a phone recorder for the handlebar or pocket, with live tiles and graphs, a simple ride viewer and GPS speed
-
-> **Read-only.** The apps only send wake-up, init, live-data and fault-code read queries (each checked against a strict whitelist). They contain no ECU write / flash / EEPROM commands and never clear fault codes.
+> **Read-only.** The app only sends the ECU wake-up, init, live-data and fault-code read queries, each checked against a strict whitelist. It has no write, flash or EEPROM commands and never clears fault codes.
 > **Never look at the screen while riding.**
-> Not affiliated with Honda Motor Co.
+> Not affiliated with or endorsed by Honda Motor Co., Ltd.
 
-![screenshot](docs/screenshot.png)
+There are two apps in this repo, and both record the same CSV format:
+- **Windows app**: live screen, recording, ride viewer and map-cell table. Described below.
+- **Android app** (`android/`): a phone recorder for the handlebar, so you don't need to carry the laptop. Its own section is coming soon.
+
+![Live screen](docs/images/pc-live.png)
+*Live screen, here in Simulator mode: values on the left, four dual-axis graphs on the right.*
+
+## What you need
+- A Windows 10 / 11 PC
+- An **FTDI FT232R USB-to-K-line cable** for the bike's 4-pin diagnostic connector (DLC)
+- A Honda with a Keihin K-line ECU. Tested on a **Honda Wave 125i (2021)**, ECU 38770-K73-T61. Other K-line Hondas will probably work, but values may need checking (see [Other bikes](#other-bikes)).
+
+## Install
+1. Download **`H-ECU-Logger-Setup-<version>.exe`** from [Releases](https://github.com/FACEPOT40/Honda-ECU-Logger/releases).
+2. Run it. It installs the app with Start menu shortcuts and an uninstall entry. It also installs FTDI's official cable driver (ticked by default; untick it if your cable already works).
+3. Start **H-ECU Logger**. Tick **Simulator** and press **Connect** to try it without a bike.
+
+## On the bike
+1. Plug the cable into the DLC and turn the **key ON** (engine off or running), kill switch on RUN.
+2. Close any other program that uses the cable (HondaECU, flash tools).
+3. Pick the COM port, untick Simulator, press **Connect**. The status shows *Connected*, plus the ECM ID and the ECU part number.
+4. Press **Start Record** before you set off and **Stop** when you're back.
+
+Logs are saved as `ride_YYYYMMDD_HHMMSS.csv` in `Documents\HondaECULogger\logs`, or in a `logs` folder next to the app if it was started from a writable folder.
 
 ## Features
-- Live values: RPM, TPS, engine temp (ECT), battery, speed, injector time, ignition advance, O2 voltage, STFT, gear (N / in gear), Mode (d14, raw)
-  - Speed only works on Honda bikes with an ECU speed sensor; on the Wave (cable speedometer) it always reads 0
-  - The ECU only knows neutral or in gear, not which gear
-- Real-time graphs (10 / 30 / 60 s window) with wall-clock time axis
-- **Start / Stop Record** to CSV with wall-clock timestamps (ms); `elapsed_s` also saved (hidden on screen by default, *View → Show elapsed time*)
-- **Marker** button / `M` key: marks an event (e.g. "heard knock") in the CSV and on the graphs
-- Red alerts: engine temp ≥ 120 °C, battery < 12.5 V while running, O2 lean (< 0.45 V) at high throttle
-- **Simulator** mode to try the app without a bike
-- **Ride viewer** (*Open CSV*): tick the values you want, and each one gets its own graph on a shared time axis
-  - Presets: Overview / Fuel / Ignition / Health / Everything
-  - **One graph at a time** with ◀ ▶ (or Page Up / Page Down) to flip through values
-  - Move the mouse over any graph to read **every value at that moment**, shown on each graph next to the cursor and in the side panel
-  - min / avg / max for the time range in view; click a marker to jump to it
-  - Mouse wheel zooms time; your last selection is remembered
-  - Drop a CSV onto the .exe, or run `python viewer.py ride.csv`, to open it directly
-  - The cursor also shows which **fuel / ignition map cell** (RPM × TPS) the engine was in
-  - **Cell hits (map table)**: time, O2, lean share and injector time per map cell for the range in view, to see which cells need tuning
-- **Fault codes (DTC)**: read once on connect and with *Read again*; the Faults button turns green (none), orange (past) or red (current). Read only, codes are never cleared
-- Auto-reconnect if the K-line link drops or the cable is unplugged (a running recording carries on)
 
-## Android app
-A recorder for the phone, so you don't have to carry the laptop on rides. Built and tested in the emulator; first run on a real phone and bike still to come.
+### Live screen
+- **Values:** RPM, TPS, engine temp, battery, speed, injector time, ignition advance, O2 voltage, STFT, Mode (d14) and gear (N / in gear).
+- **Four live graphs** (RPM / TPS, O2 / STFT, ignition / injector, engine temp / battery) over a 10 / 30 / 60 s window, with wall-clock time.
+- **Start / Stop Record** to CSV with millisecond timestamps.
+- **Marker** button or the `M` key marks a moment (e.g. "heard a knock") in the CSV and on the graphs.
+- **Red alerts:**
+  - Engine temp ≥ 120 °C.
+  - Battery < 12.5 V while running.
+  - O2 lean (< 0.45 V) at high throttle.
+- **Fault codes:** read on connect and with *Read again*. The Faults button turns green (none), orange (past codes) or red (current codes). Codes are only read, never cleared.
+- **Auto-reconnect** if the link drops or the cable is unplugged. A running recording carries on when it comes back.
+- **Simulator** mode, so you can try everything without a bike.
 
-Made for a phone on the handlebar (portrait):
-- Tabs **Live | Graphs | Logs**. Live **tiles** in the same colors as the PC app fill the screen, so the fewer values you show, the bigger the numbers; or live **graphs** (10 / 30 / 60 s)
-- **Filter** (⋮ menu) picks the values on screen; Mode and Gear are hidden by default. Hidden values are still recorded
-- Two big buttons: **Connect** and **Start Record**. While recording they become **⚑ Marker** (the phone buzzes) and **■ Stop**, which needs a long press so a bump can't end the recording. The screen stays on while recording
-- Saves the same CSV as the PC app (Documents/HondaECULogger on the phone), so phone rides open in the PC viewer
-- **GPS speed** from the phone (speed only, location is never stored), in the `gps_kmh` column
-- **Logs**: open a recorded ride (from the phone or the laptop) with zoomable graphs and a cursor, a **ride summary** and a **map cell table** (landscape)
-- Status and fault-code chips at the top (tap for details); Simulator and About in the ⋮ menu
-- Keeps recording with the screen off too (foreground service)
+### Ride viewer
+Open a ride with **Open CSV**, by dropping a CSV onto the app, or with `python viewer.py ride.csv`.
 
-What you need: an Android phone with USB OTG, an **OTG adapter** (USB-C to USB-A) and the same FTDI K-line cable. **No driver to install**: the app talks to the FTDI chip itself. On the first connect Android asks to allow the app to use the USB device; press Allow.
+![Ride viewer](docs/images/pc-viewer.png)
+*Ride viewer: one graph per value on a shared time axis, with the cursor readout on every graph.*
 
-Build (Android Studio, or from the command line with `JAVA_HOME` set to Android Studio's `jbr`):
-```bat
-android\gradlew.bat testDebugUnitTest assembleDebug
-```
-Output: `android\app\build\outputs\apk\debug\app-debug.apk`; copy it to the phone and install it (allow installing from unknown sources).
+- **Choose the values:** tick the ones you want and each gets its own graph. Or pick a preset (Overview / Fuel / Ignition / Health / Everything).
+- **One graph at a time:** flip through values with ◀ ▶ or Page Up / Page Down.
+- **Cursor readout:** move the mouse over any graph to read every value at that moment, next to the cursor and in the side panel. The panel also names the fuel / ignition **map cell** (RPM × TPS) the engine was in.
+- **min / avg / max** for the time range in view. Click a marker to jump to it.
+- **Navigation:** mouse wheel zooms time and drag pans. Your last selection is remembered.
 
-### Release APK (for GitHub Releases)
-Signed with your own key, so every later version installs as an update.
+### Cell hits (map table)
+**Cell hits** lays the ride over the same RPM × TPS grid as the fuel and ignition maps in TunerPro. For each cell you can show the time spent there, the average O2, the lean share or the injector time.
 
-1. Once: create the signing key outside the project (it asks for a password; there is only one).
-   In PowerShell:
-   ```powershell
-   New-Item -ItemType Directory -Force "$env:USERPROFILE\Documents\H-ECU-keys"
-   & "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -genkeypair -keystore "$env:USERPROFILE\Documents\H-ECU-keys\h-ecu-release.jks" -alias h-ecu -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=FACEPOT40"
-   ```
-   (In Command Prompt use `%USERPROFILE%` instead of `$env:USERPROFILE` and leave out the `&`.)
-   Copy `android\keystore.properties.example` to `android\keystore.properties` and fill in the path and password. **Back up the `.jks` file and the password**: without them you can never publish an update. Neither ever goes into git.
-2. Each release: raise `versionCode` (and `versionName`) in `android\app\build.gradle.kts`, then
-   ```bat
-   build_apk_release.bat
-   ```
-   Output: `dist\H-ECU-Logger-<version>.apk`. Upload it on GitHub: *Releases → Draft a new release*, tag e.g. `v0.3.0`.
+![Cell hits](docs/images/pc-cell-hits.png)
+*Average O2 per map cell. Blue = lean side (below 0.45 V), orange / red = rich. Faded cells have too few samples to trust.*
 
-A phone with a debug build installed must uninstall it once before the first release build (different key). Recorded rides stay in Documents/HondaECULogger; open older ones with *Open other file*.
+- **Steady throttle only** leaves out moments when the throttle is moving, so O2 and injector values reflect steady running.
+- It covers the time range in view, so you can zoom the graphs to look at one part of a ride.
+- O2 is only counted with the engine fuelling and the sensor warm.
+
+## CSV columns
+`timestamp, elapsed_s, rpm, tps_pct, ect_c, batt_v, speed_kmh, inj_ms, ign_deg, o2_v, stft, mode_d14, neutral, gps_kmh, marker, raw_17, raw_20, raw_d1`
+
+- `timestamp` is wall-clock time with milliseconds. `elapsed_s` counts seconds from the start.
+- `neutral` is 1 in neutral and 0 in gear. The ECU only knows neutral or in gear, not which gear.
+- `gps_kmh` is the phone's GPS speed. It's empty in PC logs.
+- `mode_d14` is raw byte 14 of table 0x17. The PGM-FI sheet calls it fast idle, but on the Wave it's always 128, so its meaning is unknown there.
+- `raw_*` columns keep the raw table bytes, so values can be recomputed later.
+
+The CSV opens in Excel too.
 
 ## Tested hardware
 | Item | Value |
 |---|---|
-| Bike | Honda Wave 125i (2021), ECU 38770-K73-T61 (ECM ID 01 03 3E 0D 01) |
-| Cable | FTDI FT232R USB-to-K-line, on the red 4-pin DLC |
-| Driver | Official FTDI VCP driver (shows as a COM port) |
+| Bike | Honda Wave 125i (2021), ECU 38770-K73-T61, ECM ID 01 03 3E 0D 01 |
+| Cable | FTDI FT232R USB-to-K-line, on the 4-pin DLC |
+| Driver | Official FTDI VCP driver (shows up as a COM port) |
 
-The table 0x17 layout follows the RE-ECU-th PGM-FI live data sheet and was checked against real Wave logs: RPM, TPS (full throttle reads 93.75 %, the ECU's own scale), engine temp, battery and ignition are confirmed. The injector scale (HondaECU's, about 4 µs per count) was checked against ECU-SHOP and the tune's fuel map. ⚠️ STFT never moves on the test bike (its tune probably runs without O2 feedback), so that formula is unverified. Raw bytes are always saved (`raw_17`, `raw_20`) so values can be recomputed later.
+On the Wave, these were checked against real logs:
+- **RPM, TPS, engine temp, battery, ignition:** confirmed. Full throttle reads 93.75 % on the ECU's own scale.
+- **Injector time:** HondaECU's scale, checked against ECU-SHOP and the tune's fuel map.
+- **STFT:** never moves on the test bike (its tune runs without O2 feedback), so that formula is unverified.
+- **Speed:** reads 0 on the Wave, which has a cable speedometer and no ECU speed sensor. It should work on Hondas that have one.
 
-## Install & run (Windows)
-1. Install **Python 3.12** from python.org (tick *Add Python to PATH*).
+### Other bikes
+The live data comes from table 0x17 (main values), 0x20 (O2 / STFT) and 0xD1 (neutral). To check a new bike or ECU, use the console probe. It wakes the ECU, reads the ECM ID and prints the raw table bytes:
+```bat
+python tools\m0_probe.py --list
+python tools\m0_probe.py --port COM3 --seconds 30 -v
+python tools\m0_probe.py --port COM3 --dtc -v      # fault codes only
+python tools\m0_probe.py --port COM3 --scan        # which tables the ECU answers
+```
+
+## Run from source
+1. Install **Python 3.12 or newer** from python.org (tick *Add Python to PATH*).
 2. In this folder:
    ```bat
    pip install -r requirements.txt
    python app.py
    ```
-3. Tick **Simulator** and press **Connect** to try it without a bike.
 
-### On the bike
-1. Cable in the DLC, **key ON** (engine off or running), kill switch on RUN.
-2. Close other programs using the cable (HondaECU, Honda Flash EcuK-Line Tools).
-3. Choose the COM port, untick Simulator, **Connect**.
-4. **Start Record** before setting off, **Stop** when back. Logs are saved in `logs\ride_YYYYMMDD_HHMMSS.csv`.
-
-### Build a single .exe
+### Build
 ```bat
-build_exe.bat
+build_exe.bat          rem single file: dist\H-ECU-Logger.exe
+build_installer.bat    rem installer:   dist\H-ECU-Logger-Setup-<version>.exe
 ```
-Output: `dist\H-ECU-Logger.exe`
+The installer needs:
+- [Inno Setup 6](https://jrsoftware.org/isinfo.php) (`winget install JRSoftware.InnoSetup`).
+- FTDI's VCP driver package from ftdichip.com, unzipped as `CDM-v2.12.36.20-WHQL-Certified` in this folder. It isn't in git because it's FTDI's.
 
-### Build the Windows installer (app + FTDI driver)
-Needs [Inno Setup 6](https://jrsoftware.org/isinfo.php) (`winget install JRSoftware.InnoSetup`) and FTDI's official VCP driver package from ftdichip.com, unzipped as `CDM-v2.12.36.20-WHQL-Certified` in this folder (it is not in git: it's FTDI's).
+<details>
+<summary>Android build (details coming soon)</summary>
+
+Build with Android Studio, or from the command line with `JAVA_HOME` set to Android Studio's `jbr`:
 ```bat
-build_installer.bat
+android\gradlew.bat testDebugUnitTest assembleDebug
 ```
-Output: `dist\H-ECU-Logger-Setup-<version>.exe`. It installs the app into Program Files with Start menu shortcuts and an uninstall entry, and (ticked by default) installs the FTDI cable driver with Windows' own `pnputil`. Ride logs go to `Documents\HondaECULogger\logs`.
-
-## CSV columns
-`timestamp, elapsed_s, rpm, tps_pct, ect_c, batt_v, speed_kmh, inj_ms, ign_deg, o2_v, stft, mode_d14, neutral, gps_kmh, marker, raw_17, raw_20, raw_d1`
-
-`neutral` is 1/0 (1 = in neutral). `gps_kmh` is the phone's GPS speed (empty in PC logs or without a GPS fix). `mode_d14` is the raw byte 14 of table 0x17: the PGM-FI sheet calls it fast idle, but on the Wave it is always 128 (0x80), so its meaning is unknown there.
-
-## Protocol test tool
-`tools/m0_probe.py` is a console script that wakes the ECU, reads the ECM ID and prints raw table bytes. Use it to verify a new bike/ECU:
-```bat
-python tools\m0_probe.py --list
-python tools\m0_probe.py --port COM3 --seconds 30 -v
-python tools\m0_probe.py --port COM3 --dtc -v      # read fault codes only
-```
+A signed release APK comes from `build_apk_release.bat`. It needs your own signing key in `android\keystore.properties`; copy `android\keystore.properties.example` to start. Keep the key and its password backed up and out of git.
+</details>
 
 ## Credits
 - Protocol notes: [AutotronicCommunity/Honda_Keihin_KLine_Protocol](https://github.com/AutotronicCommunity/Honda_Keihin_KLine_Protocol)
-- Value formulas: [HondaECU](https://github.com/aeaphichart/HondaECU-1) (MCU Innovations / RyanHope, GPL-3.0)
+- Value formulas and fault-code reads: [HondaECU](https://github.com/aeaphichart/HondaECU-1) (MCU Innovations / RyanHope, GPL-3.0)
 - Table layout: RE-ECU-th "Protokol Live Data PGM-FI Honda Bike" sheet
 
 ## License
-GPL-3.0
+GPL-3.0. Made by FACEPOT40 (ปาย).
+
+Honda is a trademark of its owner. This project is not affiliated with or endorsed by Honda Motor Co., Ltd.
