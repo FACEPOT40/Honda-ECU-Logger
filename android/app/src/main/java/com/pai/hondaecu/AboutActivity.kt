@@ -61,7 +61,7 @@ class AboutActivity : Activity() {
                 "and a USB OTG adapter.",
             "Thanks to" to "AutotronicCommunity (K-line protocol notes) · HondaECU by RyanHope / MCU Innovations " +
                 "(value formulas, fault-code reads, GPL-3.0) · RE-ECU-th (PGM-FI live data sheet)",
-            "License" to "Made by FACEPOT40. GPL-3.0, free and open source.",
+            "License" to "Made by FACEPOT40 (ปาย). GPL-3.0, free and open source.",
         )
     }
 }

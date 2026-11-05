@@ -140,7 +140,7 @@ class AboutDialog(QDialog):
             + section("Thanks to", "AutotronicCommunity (K-line protocol notes) · HondaECU by "
                                    "RyanHope / MCU Innovations (value formulas, fault-code reads, GPL-3.0) · "
                                    "RE-ECU-th (PGM-FI live data sheet)")
-            + section("License", f"Made by FACEPOT40. GPL-3.0, free and open source: "
+            + section("License", f"Made by FACEPOT40 (ปาย). GPL-3.0, free and open source: "
                                  f"<a style='color:#4fc3f7' href='{REPO_URL}'>source on GitHub</a>")
             + f"<p style='margin:0; color:{theme.MUTED}; font-size:8pt'>Not affiliated with or endorsed "
               "by Honda Motor Co., Ltd. Honda is a trademark of its owner.</p>")

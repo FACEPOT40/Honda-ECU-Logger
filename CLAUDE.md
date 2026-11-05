@@ -20,7 +20,7 @@ styles buttons (Connect blue, Start Record amber, Stop red, chosen option blue).
 (viewer.COLORS / Look.COLORS) are separate and unchanged.
 About (3 Nov): PC `AboutDialog` in app.py (Help → About) and phone `AboutActivity` (ⓘ button on
 the main screen) say the same things: name, version, read only, ride safe, tested bike, credits,
-GPL-3.0 + GitHub link (`REPO_URL`), Honda disclaimer, "Made by FACEPOT40" (Pai's GitHub name).
+GPL-3.0 + GitHub link (`REPO_URL`), Honda disclaimer, "Made by FACEPOT40 (ปาย)" (Pai's GitHub name + Thai nickname, added 5 Nov, still 0.3.1).
 Keep both in step.
 Versions: both apps 0.3.1 since 4 Nov (0.3.0 = the 3 Nov rebrand): PC `app.VERSION`, Android
 `versionName` (+ `versionCode` 3; raise versionCode on every phone release). Bump both together.
