@@ -1,4 +1,6 @@
 # H-ECU Logger (K-line)
+**Download:** [Windows installer (x64)](https://github.com/FACEPOT40/Honda-ECU-Logger/releases/tag/Windows-Installer) · [Android APK](https://github.com/FACEPOT40/Honda-ECU-Logger/releases/tag/Android-Package-Kit)
+
 
 **A live data logger for Honda / Keihin K-line motorcycle ECUs.** Record what the ECU sees while you ride, then study the ride afterwards as graphs and as a map-cell table, to check your road tuning.
 
@@ -12,7 +14,7 @@ There are two apps in this repo, and both record the same CSV format:
 - **Windows app**: live screen, recording, ride viewer and map-cell table. Described below.
 - **Android app** (`android/`): a phone recorder for the handlebar, so you don't need to carry the laptop. See [Android app](#android-app).
 
-**Download:** [Windows installer (x64)](https://github.com/FACEPOT40/Honda-ECU-Logger/releases/tag/Windows-Installer) · [Android APK](https://github.com/FACEPOT40/Honda-ECU-Logger/releases/tag/Android-Package-Kit)
+
 
 ![Live screen](docs/images/pc-live.png)
 *Live screen, here in Simulator mode: values on the left, four dual-axis graphs on the right.*
