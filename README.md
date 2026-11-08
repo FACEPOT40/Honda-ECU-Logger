@@ -1,5 +1,5 @@
 # H-ECU Logger (K-line)
-**Download:**  [Windows installer (x64)](https://github.com/FACEPOT40/Honda-ECU-Logger/releases/tag/Windows-Installer)  |  [Android APK](https://github.com/FACEPOT40/Honda-ECU-Logger/releases/tag/Android-Package-Kit) 
+**Download:**  [Windows installer (x64)](https://github.com/FACEPOT40/Honda-ECU-Logger/releases/tag/Windows-Installer_v0.3.2)  |  [Android APK](https://github.com/FACEPOT40/Honda-ECU-Logger/releases/tag/Android-Package-Kit_v0.3.2) 
 
 
 **A live data logger for Honda / Keihin K-line motorcycle ECUs.** Record what the ECU sees while you ride, then study the ride afterwards as graphs and as a map-cell table, to check your road tuning.
