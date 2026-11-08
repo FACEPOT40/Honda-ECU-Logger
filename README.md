@@ -89,7 +89,7 @@ A recorder for the phone on your handlebar. It uses the same FTDI cable and save
 - **No driver to install.** The app talks to the FTDI chip itself. On the first connect Android asks to allow the app to use the USB device; press Allow.
 
 ### Install
-1. On the phone, download **`H-ECU-Logger-<version>.apk`** from the [Android APK release](https://github.com/FACEPOT40/Honda-ECU-Logger/releases/tag/Android-Package-Kit).
+1. On the phone, download **`H-ECU-Logger-<version>.apk`** from the [Android APK release](https://github.com/FACEPOT40/Honda-ECU-Logger/releases).
 2. Open it and allow installing from this source when Android asks.
 3. Later versions install over it and keep your settings and logs.
 
