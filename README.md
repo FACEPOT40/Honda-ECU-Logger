@@ -102,6 +102,7 @@ A recorder for the phone on your handlebar. It uses the same FTDI cable and save
 
 - **Made for an upright phone on the handlebar.** Tabs at the top: **Live | Graphs | Logs**.
 - **Live tiles** in the same colors as the PC app. They share the screen, so the fewer values you show, the bigger the numbers. **Filter** (⋮ menu) picks the values; hidden values are still recorded. By default **Inj** and **Inj duty** sit side by side, and ECU speed, Mode and Gear are hidden (GPS speed shows instead).
+- **Arrange the tiles:** hold a tile and drag it onto another. It takes that place and the others shift along. The order is saved, and the graphs follow it too. ⋮ → **Reset tile order** puts them back.
 - **Graphs** tab: live graphs over 10 / 30 / 60 s, with marker lines.
 - **Big buttons at the bottom:** **Connect** and **Start Record**. While recording they become **⚑ Marker** (the phone buzzes) and **■ Stop**. Stop needs a long press, so a bump can't end the recording.
 - **Status chips at the top:** connection (tap for the ECM ID) and fault codes (tap for the list).

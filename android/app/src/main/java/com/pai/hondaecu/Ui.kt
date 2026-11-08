@@ -120,10 +120,52 @@ object ValueFilter {
         return prefs.getStringSet(KEY_HIDDEN, null) ?: DEFAULT_HIDDEN
     }
 
-    fun shown(c: Context): List<Decode.Field> = hidden(c).let { h -> Decode.FIELDS.filter { it.key !in h } }
+    fun shown(c: Context): List<Decode.Field> = hidden(c).let { h -> ordered(c).filter { it.key !in h } }
+
+    // ------------------------------------------------------------ order (hold a tile and drag it)
+
+    private const val KEY_ORDER = "value_order"
+
+    /** Every value in the rider's order: the saved order first, then any value it doesn't know
+     *  yet (added in a later version) in the default place order. Tiles, live graphs and the
+     *  recorded-ride graphs all follow it. */
+    fun ordered(c: Context): List<Decode.Field> {
+        val saved = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_ORDER, null)
+        return order(saved?.split(",").orEmpty()).map { k -> Decode.FIELDS.first { it.key == k } }
+    }
+
+    /** The full key order from a saved list: unknown keys dropped, missing ones appended. */
+    fun order(saved: List<String>): List<String> {
+        val all = Decode.FIELDS.map { it.key }
+        val known = saved.filter { it in all }.distinct()
+        return known + all.filter { it !in known }
+    }
+
+    /**
+     * [key] dropped on [target]: it takes the target's place among the shown values and the ones
+     * in between shift by one. Hidden values keep their places in the full order, so they come
+     * back where they were when shown again.
+     */
+    fun moved(order: List<String>, hidden: Set<String>, key: String, target: String): List<String> {
+        val shown = order.filter { it !in hidden }.toMutableList()
+        val to = shown.indexOf(target)
+        if (key == target || to < 0 || !shown.remove(key)) return order
+        shown.add(to, key)
+        val next = shown.iterator()
+        return order.map { k -> if (k in hidden) k else next.next() }
+    }
+
+    fun move(c: Context, key: String, target: String) {
+        val now = ordered(c).map { it.key }
+        val next = moved(now, hidden(c), key, target)
+        c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_ORDER, next.joinToString(",")).apply()
+    }
+
+    fun resetOrder(c: Context) =
+        c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY_ORDER).apply()
 
     fun choose(c: Context, onChanged: () -> Unit) {
-        val fields = Decode.FIELDS
+        val fields = ordered(c)
         val hidden = hidden(c)
         val checked = BooleanArray(fields.size) { fields[it].key !in hidden }
         fun save(keys: Set<String>) {

@@ -7,6 +7,7 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -27,6 +28,7 @@ import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
 import android.util.TypedValue
+import android.view.DragEvent
 import android.view.Gravity
 import android.view.View
 import android.view.WindowInsets
@@ -201,6 +203,7 @@ class MainActivity : Activity() {
                 isChecked = simulate
                 isEnabled = !Live.connected       // pick it before connecting
             }
+            menu.add(0, 5, 0, "Reset tile order")
             menu.add(0, 4, 2, "Settings")
             menu.add(0, 3, 3, "About")
             setOnMenuItemClickListener {
@@ -213,6 +216,11 @@ class MainActivity : Activity() {
                     }
                     3 -> startActivity(Intent(this@MainActivity, AboutActivity::class.java))
                     4 -> startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
+                    5 -> {
+                        ValueFilter.resetOrder(this@MainActivity)
+                        showTiles()
+                        toast("Tile order reset. Hold a tile and drag it to move it", short = true)
+                    }
                 }
                 true
             }
@@ -603,6 +611,34 @@ class MainActivity : Activity() {
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(8), dp(12), dp(8))
+            // hold a tile and drag it onto another: it takes that place and the others shift
+            // along (saved; the live and ride graphs follow the same order)
+            setOnLongClickListener { v ->
+                buzz(25)
+                v.startDragAndDrop(ClipData.newPlainText("tile", f.key), View.DragShadowBuilder(v), f.key, 0)
+                v.alpha = 0.35f
+                true
+            }
+            setOnDragListener { v, e ->
+                val dragged = e.localState as? String
+                when (e.action) {
+                    DragEvent.ACTION_DRAG_STARTED -> dragged != null
+                    DragEvent.ACTION_DRAG_ENTERED -> {
+                        if (dragged != f.key) { v.scaleX = 0.93f; v.scaleY = 0.93f }
+                        true
+                    }
+                    DragEvent.ACTION_DRAG_EXITED -> { v.scaleX = 1f; v.scaleY = 1f; true }
+                    DragEvent.ACTION_DROP -> {
+                        if (dragged != null && dragged != f.key) {
+                            ValueFilter.move(this@MainActivity, dragged, f.key)
+                            tilesPanel.post { showTiles() }      // not while the drag is still being delivered
+                        }
+                        true
+                    }
+                    DragEvent.ACTION_DRAG_ENDED -> { v.alpha = 1f; v.scaleX = 1f; v.scaleY = 1f; true }
+                    else -> true
+                }
+            }
             background = GradientDrawable().apply {
                 setColor(TILE)
                 setStroke(dp(1), (color and 0x00FFFFFF) or 0x66000000)
