@@ -41,7 +41,8 @@ Logs are saved as `ride_YYYYMMDD_HHMMSS.csv` in `Documents\HondaECULogger\logs`,
 ## Features
 
 ### Live screen
-- **Values:** RPM, TPS, engine temp, battery, speed, injector time, ignition advance, O2 voltage, STFT, Mode (d14) and gear (N / in gear).
+- **Values:** RPM, TPS, engine temp, battery, injector time, **injector duty**, ignition advance, O2 voltage, GPS speed (phone logs), speed, STFT, Mode (d14) and gear (N / in gear).
+  - **Injector duty** is worked out as `injector ms × RPM / 1200`: how much of each engine cycle the injector is open. It assumes one injection every 2 turns (a 4-stroke with sequential injection, like Honda's fuel-injected bikes). It shows when a stock injector on a bigger engine is running out of room. It isn't stored in the CSV, so older logs show it too.
 - **Four live graphs** (RPM / TPS, O2 / STFT, ignition / injector, engine temp / battery) over a 10 / 30 / 60 s window, with wall-clock time.
 - **Start / Stop Record** to CSV with millisecond timestamps.
 - **Marker** button or the `M` key marks a moment (e.g. "heard a knock") in the CSV and on the graphs.
@@ -49,6 +50,7 @@ Logs are saved as `ride_YYYYMMDD_HHMMSS.csv` in `Documents\HondaECULogger\logs`,
   - Engine temp ≥ 120 °C.
   - Battery < 12.5 V while running.
   - O2 lean (< 0.45 V) at high throttle.
+  - Injector duty ≥ 85 % (the injector is close to its limit).
 - **Fault codes:** read on connect and with *Read again*. The Faults button turns green (none), orange (past codes) or red (current codes). Codes are only read, never cleared.
 - **Auto-reconnect** if the link drops or the cable is unplugged. A running recording carries on when it comes back.
 - **Simulator** mode, so you can try everything without a bike.
@@ -66,7 +68,7 @@ Open a ride with **Open CSV**, by dropping a CSV onto the app, or with `python v
 - **Navigation:** mouse wheel zooms time and drag pans. Your last selection is remembered.
 
 ### Cell hits (map table)
-**Cell hits** lays the ride over the same RPM × TPS grid as the fuel and ignition maps in TunerPro. For each cell you can show the time spent there, the average O2, the lean share, the injector time or the **average engine temp**. The temperature tells you whether a lean cell was lean on a cold engine (still warming up) or a hot one.
+**Cell hits** lays the ride over the same RPM × TPS grid as the fuel and ignition maps in TunerPro. For each cell you can show the time spent there, the average O2, the lean share, the injector time, the **injector duty** (red at 85 %) or the **average engine temp**. The temperature tells you whether a lean cell was lean on a cold engine (still warming up) or a hot one.
 
 ![Cell hits](docs/images/pc-cell-hits.png)
 *Average O2 per map cell. Blue = lean side (below 0.45 V), orange / red = rich. Faded cells have too few samples to trust.*
@@ -99,7 +101,7 @@ A recorder for the phone on your handlebar. It uses the same FTDI cable and save
 <td>
 
 - **Made for an upright phone on the handlebar.** Tabs at the top: **Live | Graphs | Logs**.
-- **Live tiles** in the same colors as the PC app. They share the screen, so the fewer values you show, the bigger the numbers. **Filter** (⋮ menu) picks the values; hidden values are still recorded.
+- **Live tiles** in the same colors as the PC app. They share the screen, so the fewer values you show, the bigger the numbers. **Filter** (⋮ menu) picks the values; hidden values are still recorded. By default **Inj** and **Inj duty** sit side by side, and ECU speed, Mode and Gear are hidden (GPS speed shows instead).
 - **Graphs** tab: live graphs over 10 / 30 / 60 s, with marker lines.
 - **Big buttons at the bottom:** **Connect** and **Start Record**. While recording they become **⚑ Marker** (the phone buzzes) and **■ Stop**. Stop needs a long press, so a bump can't end the recording.
 - **Status chips at the top:** connection (tap for the ECM ID) and fault codes (tap for the list).
@@ -115,7 +117,7 @@ A recorder for the phone on your handlebar. It uses the same FTDI cable and save
 ### Settings (⋮ → Settings)
 - **Keep screen on:** while connected (default), while recording, always or never.
 - **Alert limits** per value: low and / or high. The value turns red at or beyond its limit.
-  - Defaults: engine temp ≥ 120 °C, battery ≤ 12.5 V above 1,500 rpm.
+  - Defaults: engine temp ≥ 120 °C, battery ≤ 12.5 V above 1,500 rpm, injector duty ≥ 85 %.
   - The O2 lean warning has its own switch.
 - **Red screen on alerts:** the whole screen fades red, so you notice without reading numbers. There's no sound or vibration.
 - **Auto record** (off by default):
@@ -146,7 +148,7 @@ A recorder for the phone on your handlebar. It uses the same FTDI cable and save
 </tr>
 </table>
 
-**Cells** is the phone version of the PC's cell hits table. It shows time, O2, lean %, injector time, engine temp or sample count per map cell, with the same steady-throttle filter. Turn the phone sideways; pinch to zoom, double-tap a cell to zoom in, and tap a cell for its details.
+**Cells** is the phone version of the PC's cell hits table. It shows time, O2, lean %, injector time, injector duty, engine temp or sample count per map cell, with the same steady-throttle filter. Turn the phone sideways; pinch to zoom, double-tap a cell to zoom in, and tap a cell for its details.
 
 ![Cell table on the phone](docs/images/android-cells.jpg)
 

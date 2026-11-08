@@ -23,7 +23,7 @@ import kotlin.math.min
  * map, tap a cell to select it. The RPM and TPS headers stay in place.
  */
 class CellGridView(context: Context) : View(context) {
-    enum class Mode(val label: String) { TIME("Time s"), O2("O2 V"), LEAN("Lean %"), INJ("Inj ms"), TEMP("Temp °C"), SAMPLES("Samples") }
+    enum class Mode(val label: String) { TIME("Time s"), O2("O2 V"), LEAN("Lean %"), INJ("Inj ms"), DUTY("Duty %"), TEMP("Temp °C"), SAMPLES("Samples") }
 
     var hits: Cells.Hits? = null
         set(v) { field = v; invalidate() }
@@ -137,6 +137,7 @@ class CellGridView(context: Context) : View(context) {
             Mode.O2 -> h.o2
             Mode.LEAN -> h.leanPct
             Mode.INJ -> h.inj
+            Mode.DUTY -> h.duty
             Mode.TEMP -> h.ect
             Mode.SAMPLES -> Array(h.n.size) { r -> DoubleArray(h.n[r].size) { c -> h.n[r][c].toDouble() } }
         }
@@ -150,7 +151,7 @@ class CellGridView(context: Context) : View(context) {
         val c0 = max(0, (ox / cellW).toInt())
         val c1 = min(cols - 1, ((ox + width) / cellW).toInt())
         // numbers only when they fit the cells; otherwise the colors alone (zoom in to read them)
-        val sample = format(if (mode == Mode.LEAN || mode == Mode.SAMPLES || mode == Mode.TEMP) 100.0 else 10.0)
+        val sample = format(if (mode == Mode.LEAN || mode == Mode.SAMPLES || mode == Mode.TEMP || mode == Mode.DUTY) 100.0 else 10.0)
         text.textSize = min(sp(12f), cellH * 0.6f)
         val numbers = text.textSize >= sp(7.5f) && text.measureText(sample) + dp(4f) <= cellW
         val lines = cellW >= dp(10f)
@@ -212,7 +213,7 @@ class CellGridView(context: Context) : View(context) {
     private fun format(v: Double) = when (mode) {
         Mode.TIME -> "%.1f".format(Locale.US, v)
         Mode.O2, Mode.INJ -> "%.2f".format(Locale.US, v)
-        Mode.LEAN, Mode.SAMPLES, Mode.TEMP -> "%.0f".format(Locale.US, v)
+        Mode.LEAN, Mode.SAMPLES, Mode.TEMP, Mode.DUTY -> "%.0f".format(Locale.US, v)
     }
 
     private companion object { const val COLD_C = 100.0 }
@@ -223,6 +224,8 @@ class CellGridView(context: Context) : View(context) {
             Mode.O2 -> if (v < Cells.LEAN_V) 0xFF4F8FF7.toInt() to (Cells.LEAN_V - v) / Cells.LEAN_V
                 else 0xFFFF7043.toInt() to (v - Cells.LEAN_V) / 0.5
             Mode.LEAN -> 0xFF4F8FF7.toInt() to v / 100
+            // like the PC: teal by how busy the injector is, red at the 85 % alert limit
+            Mode.DUTY -> if (v >= 85.0) 0xFFEF5350.toInt() to 1.0 else 0xFF26C6DA.toInt() to 0.15 + 0.85 * v / 85.0
             // engine temp, like viewer.cell_temp_color: blue = warming up (below 100 °C), orange/red = hot
             Mode.TEMP -> if (v < COLD_C) 0xFF4F8FF7.toInt() to 0.2 + 0.8 * (COLD_C - v) / 40
                 else 0xFFFF7043.toInt() to 0.2 + 0.8 * (v - COLD_C) / 30

@@ -108,7 +108,7 @@ class CellsActivity : Activity() {
         val h = grid.hits ?: return
         val s = StringBuilder("${Cells.name(r, c)}: ${"%.1f".format(Locale.US, h.seconds[r][c])} s running")
         if (h.n[r][c] > 0) s.append("  ·  O2 ${"%.2f".format(Locale.US, h.o2[r][c])} V average, " +
-            "${"%.0f".format(h.leanPct[r][c])} % lean  ·  injector ${"%.2f".format(Locale.US, h.inj[r][c])} ms" +
+            "${"%.0f".format(h.leanPct[r][c])} % lean  ·  injector ${"%.2f".format(Locale.US, h.inj[r][c])} ms, duty ${"%.0f".format(h.duty[r][c])} %" +
             (if (h.ect[r][c].isNaN()) "" else "  ·  engine ${"%.0f".format(h.ect[r][c])} °C") + "  ·  ${h.n[r][c]} samples")
         else s.append("  ·  no steady fuel-on samples here")
         details.text = s

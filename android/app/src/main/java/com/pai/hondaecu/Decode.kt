@@ -15,15 +15,18 @@ object Decode {
     }
 
     val FIELDS = listOf(
+        // screen order, same as decode.py: tiles go in pairs, so Inj and Inj duty sit side by
+        // side (the CSV has its own column order, CsvFormat.VALUES)
         Field("rpm", "RPM", "rpm", 0),
         Field("tps_pct", "TPS", "%", 1),
         Field("ect_c", "Eng temp", "°C", 0),
         Field("batt_v", "Batt", "V", 1),
-        Field("speed_kmh", "Speed", "km/h", 0),
-        Field("gps_kmh", "GPS speed", "km/h", 0),      // from the phone's GPS, not the ECU
         Field("inj_ms", "Inj", "ms", 2),
+        Field("inj_duty", "Inj duty", "%", 0),         // worked out from inj_ms and rpm, not in the CSV
         Field("ign_deg", "Ign", "°", 1),
         Field("o2_v", "O2", "V", 2),
+        Field("gps_kmh", "GPS speed", "km/h", 0),      // from the phone's GPS, not the ECU
+        Field("speed_kmh", "Speed", "km/h", 0),
         Field("stft", "STFT", "", 3),
         Field("mode_d14", "Mode (d14)", "", 0),
         Field("neutral", "Gear", "", 0),
@@ -34,6 +37,20 @@ object Decode {
         BigDecimal(x).setScale(digits, RoundingMode.HALF_EVEN).toDouble()
 
     private fun u(d: ByteArray, i: Int) = d[i].toInt() and 0xFF
+
+    /**
+     * Injector duty in %, like decode.inj_duty(): open time against one engine cycle (2 turns,
+     * one injection per cycle: a 4-stroke with sequential injection). Reads slightly high
+     * (inj_ms includes the ~0.2 ms opening delay): fine as a warning. null without RPM.
+     */
+    fun injDuty(injMs: Double?, rpm: Double?): Double? =
+        if (injMs == null || rpm == null || !(rpm > 0)) null else round(injMs * rpm / 1200, 1)
+
+    /** Values worked out from others (shown, never sent or stored): injector duty. */
+    fun addDerived(s: MutableMap<String, Any?>): MutableMap<String, Any?> {
+        s["inj_duty"] = injDuty((s["inj_ms"] as Number?)?.toDouble(), (s["rpm"] as Number?)?.toDouble())
+        return s
+    }
 
     /** °C from a raw temperature byte; 0xFF = sensor not fitted. */
     private fun temp(raw: Int): Int? = if (raw == 0xFF) null else raw - 40
@@ -108,6 +125,8 @@ object Decode {
         if (ect != null && ect >= 120) bad += "ect_c"
         if (batt != null && rpm > 1500 && batt < 12.5) bad += "batt_v"
         if (o2 != null && o2 < 0.45 && tps > 50 && rpm > 3000) bad += "o2_v"
+        val duty = (s["inj_duty"] as Number?)?.toDouble()
+        if (duty != null && duty >= 85) bad += "inj_duty"
         return bad
     }
 }

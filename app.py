@@ -24,7 +24,7 @@ from worker import PollWorker
 
 APP_NAME = "H-ECU Logger"
 SUBTITLE = "K-line"
-VERSION = "0.3.1"
+VERSION = "0.3.2"
 
 # graph rows: (left key, right key or None, title)
 GRAPHS = [

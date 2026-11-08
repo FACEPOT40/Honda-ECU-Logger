@@ -73,7 +73,7 @@ object Look {
     val COLORS = mapOf(
         "rpm" to "#4fc3f7", "tps_pct" to "#ffb74d", "ect_c" to "#ef5350",
         "batt_v" to "#9ccc65", "speed_kmh" to "#ba68c8", "gps_kmh" to "#7986cb", "inj_ms" to "#4db6ac",
-        "ign_deg" to "#fff176", "o2_v" to "#f06292", "stft" to "#e0e0e0",
+        "ign_deg" to "#fff176", "o2_v" to "#f06292", "stft" to "#e0e0e0", "inj_duty" to "#26c6da",
         "mode_d14" to "#90a4ae", "neutral" to "#a1887f",
     ).mapValues { Color.parseColor(it.value) }
     val BACKGROUND = Color.parseColor("#08090C")
@@ -97,9 +97,11 @@ object ValueFilter {
     const val PREFS = "screen"
     private const val KEY_HIDDEN = "hidden_values"
     private const val KEY_DEFAULTS = "filter_defaults_v1"
+    private const val KEY_DEFAULTS_2 = "filter_defaults_v2"
 
-    /** Hidden until the rider shows them: Mode (d14) never changes on the Wave, Gear is only N / in gear. */
-    val DEFAULT_HIDDEN = setOf("mode_d14", "neutral")
+    /** Hidden until the rider shows them: Mode (d14) never changes on the Wave, Gear is only
+     *  N / in gear, and ECU speed is 0 on bikes with a cable speedometer (GPS speed shows). */
+    val DEFAULT_HIDDEN = setOf("mode_d14", "neutral", "speed_kmh")
 
     fun hidden(c: Context): Set<String> {
         val prefs = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -108,6 +110,12 @@ object ValueFilter {
             val edit = prefs.edit().putBoolean(KEY_DEFAULTS, true)
             if (prefs.getStringSet(KEY_HIDDEN, null).isNullOrEmpty()) edit.putStringSet(KEY_HIDDEN, DEFAULT_HIDDEN)
             edit.apply()
+        }
+        if (!prefs.getBoolean(KEY_DEFAULTS_2, false)) {
+            // once, on updating to the version with Inj duty: hide ECU speed (Pai's choice, GPS
+            // speed is the one to read); the new Inj duty tile shows because it isn't hidden
+            val now = prefs.getStringSet(KEY_HIDDEN, null) ?: DEFAULT_HIDDEN
+            prefs.edit().putBoolean(KEY_DEFAULTS_2, true).putStringSet(KEY_HIDDEN, now + "speed_kmh").apply()
         }
         return prefs.getStringSet(KEY_HIDDEN, null) ?: DEFAULT_HIDDEN
     }

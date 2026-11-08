@@ -44,16 +44,18 @@ Wave, which has no fan). The ECU only knows neutral / in gear, not which gear.
 INJ_DIVISOR = 65535 / 265.5
 
 FIELDS = [
-    # key, label, unit, decimals
+    # key, label, unit, decimals. The order is the screen order (the phone's tiles go in pairs:
+    # Inj and Inj duty side by side); the CSV has its own column order (recorder.VALUES).
     ("rpm", "RPM", "rpm", 0),
     ("tps_pct", "TPS", "%", 1),
     ("ect_c", "Eng temp", "°C", 0),
     ("batt_v", "Batt", "V", 1),
-    ("speed_kmh", "Speed", "km/h", 0),
-    ("gps_kmh", "GPS speed", "km/h", 0),      # phone GPS, Android app only; empty in PC logs
     ("inj_ms", "Inj", "ms", 2),
+    ("inj_duty", "Inj duty", "%", 0),         # worked out from inj_ms and rpm, not in the CSV
     ("ign_deg", "Ign", "°", 1),
     ("o2_v", "O2", "V", 2),
+    ("gps_kmh", "GPS speed", "km/h", 0),      # phone GPS, Android app only; empty in PC logs
+    ("speed_kmh", "Speed", "km/h", 0),
     ("stft", "STFT", "", 3),
     ("mode_d14", "Mode (d14)", "", 0),
     ("neutral", "Gear", "", 0),
@@ -73,6 +75,24 @@ def fmt_value(key, v):
     if key in TEXT:
         return TEXT[key].get(int(v), str(v))
     return f"{v:,.{DECIMALS[key]}f}"
+
+
+DUTY_ALERT = 85   # % injector duty: above this the injector is close to its limit
+
+
+def inj_duty(inj_ms, rpm):
+    """Injector duty in %: open time against one engine cycle (2 turns, one injection per
+    cycle: a 4-stroke with sequential injection, like Honda's PGM-FI bikes). inj_ms includes
+    the injector's ~0.2 ms opening delay, so this reads slightly high: fine as a warning."""
+    if inj_ms is None or not rpm or rpm <= 0:
+        return None
+    return round(inj_ms * rpm / 1200, 1)
+
+
+def add_derived(s: dict) -> dict:
+    """Values worked out from others (shown, never sent or stored): injector duty."""
+    s["inj_duty"] = inj_duty(s.get("inj_ms"), s.get("rpm"))
+    return s
 
 
 def _temp(raw):
@@ -161,4 +181,7 @@ def alerts(s: dict) -> set:
         bad.add("batt_v")
     if o2 is not None and o2 < 0.45 and tps > 50 and rpm > 3000:
         bad.add("o2_v")                       # lean at high load
+    duty = s.get("inj_duty")
+    if duty is not None and duty >= DUTY_ALERT:
+        bad.add("inj_duty")                   # injector near its limit: lean risk at the top
     return bad

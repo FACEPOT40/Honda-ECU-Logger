@@ -55,7 +55,7 @@ def hits(t, data, mask=None, steady_mask=None):
     """Per-cell summary of the samples where mask is True (default: all).
 
     seconds: time the engine ran in the cell (fuel cut included)
-    n, o2, lean_pct, inj, ect: from samples with fuel on and a warm O2 sensor, and only where
+    n, o2, lean_pct, inj, duty, ect: from samples with fuel on and a warm O2 sensor, and only where
     steady_mask is True if given (O2 lags behind quick throttle changes; see steady()).
     ect is the average engine temp of those samples, so a lean cell can be told apart as
     cold-engine (warm-up) or hot.
@@ -83,10 +83,12 @@ def hits(t, data, mask=None, steady_mask=None):
     np.add.at(o2_sum, idx, o2[use])
     np.add.at(lean, idx, (o2[use] < LEAN_V).astype(float))
     np.add.at(inj_sum, idx, inj[use])
+    duty_sum = np.zeros(shape)                   # injector duty %, as decode.inj_duty()
+    np.add.at(duty_sum, idx, inj[use] * rpm[use] / 1200)
     has_t = use & np.isfinite(ect)
     t_n, t_sum = np.zeros(shape), np.zeros(shape)
     np.add.at(t_n, (r[has_t], c[has_t]), 1)
     np.add.at(t_sum, (r[has_t], c[has_t]), ect[has_t])
     with np.errstate(invalid="ignore", divide="ignore"):
         return {"seconds": seconds, "n": n, "o2": o2_sum / n,
-                "lean_pct": 100 * lean / n, "inj": inj_sum / n, "ect": t_sum / t_n}
+                "lean_pct": 100 * lean / n, "inj": inj_sum / n, "duty": duty_sum / n, "ect": t_sum / t_n}

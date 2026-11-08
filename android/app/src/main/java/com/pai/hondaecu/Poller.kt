@@ -108,7 +108,7 @@ class Poller(
             cycle++
             if (got) {
                 misses = 0
-                onSample(s)
+                onSample(Decode.addDerived(s))
             } else {
                 misses++
             }

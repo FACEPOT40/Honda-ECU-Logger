@@ -66,8 +66,8 @@ class CellsTest {
         val h = Cells.hits(r, r.start, r.end, steady)
         println("CELLS total_s=%.3f steady=%d".format(java.util.Locale.US, h.totalSeconds, steady.count { it }))
         for (row in h.n.indices) for (c in h.n[row].indices) if (h.seconds[row][c] > 0 || h.n[row][c] > 0) {
-            println("CELL %d %d %.3f %d %.4f %.2f %.4f %.3f".format(java.util.Locale.US, row, c,
-                h.seconds[row][c], h.n[row][c], h.o2[row][c], h.leanPct[row][c], h.inj[row][c], h.ect[row][c]))
+            println("CELL %d %d %.3f %d %.4f %.2f %.4f %.3f %.3f".format(java.util.Locale.US, row, c,
+                h.seconds[row][c], h.n[row][c], h.o2[row][c], h.leanPct[row][c], h.inj[row][c], h.ect[row][c], h.duty[row][c]))
         }
         for ((k, v) in RideSummary.lines(r, steady)) println("SUMMARY $k: ${v.replace("\n", " | ")}")
     }

@@ -6,7 +6,7 @@ import time
 
 from PySide6.QtCore import QThread, Signal
 
-from decode import DECODERS
+from decode import DECODERS, add_derived
 from kline import INIT_MSG, INIT_OK, WAKE_MSG, KLine, SimECU, payload, query_msg, read_dtcs
 
 # tables that change slowly are asked only every Nth cycle, so the main values stay fast
@@ -134,6 +134,6 @@ class PollWorker(QThread):
             cycle += 1
             if got:
                 misses = 0
-                self.sample.emit(s)
+                self.sample.emit(add_derived(s))
             else:
                 misses += 1

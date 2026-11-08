@@ -89,7 +89,11 @@ class RideData(
                 if (m.isNotEmpty()) markers += t to m
             }
             require(times.isNotEmpty()) { "No data rows with a valid timestamp were found in this file." }
-            return RideData(times.toLongArray(), keys.zip(values) { k, v -> k to v.toFloatArray() }.toMap(), markers)
+            val cols = keys.zip(values) { k, v -> k to v.toFloatArray() }.toMap().toMutableMap()
+            val inj = cols["inj_ms"]; val rpm = cols["rpm"]
+            if (inj != null && rpm != null)             // worked out, not stored: old logs have it too
+                cols["inj_duty"] = FloatArray(inj.size) { i -> if (rpm[i] > 0f) inj[i] * rpm[i] / 1200f else Float.NaN }
+            return RideData(times.toLongArray(), cols, markers)
         }
     }
 }

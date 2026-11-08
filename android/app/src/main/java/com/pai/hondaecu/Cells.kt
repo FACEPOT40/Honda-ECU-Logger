@@ -67,6 +67,8 @@ object Cells {
 
     class Hits(val seconds: Array<DoubleArray>, val n: Array<IntArray>, val o2: Array<DoubleArray>,
                val leanPct: Array<DoubleArray>, val inj: Array<DoubleArray>,
+               /** Average injector duty % of the same samples, as Decode.injDuty(). */
+               val duty: Array<DoubleArray>,
                /** Average engine temp of the same samples: lean when cold (warm-up) or hot. */
                val ect: Array<DoubleArray>) {
         val totalSeconds get() = seconds.sumOf { it.sum() }
@@ -86,6 +88,7 @@ object Cells {
         val o2Sum = Array(rows) { DoubleArray(cols) }
         val lean = Array(rows) { IntArray(cols) }
         val injSum = Array(rows) { DoubleArray(cols) }
+        val dutySum = Array(rows) { DoubleArray(cols) }
         val tN = Array(rows) { IntArray(cols) }
         val tSum = Array(rows) { DoubleArray(cols) }
         val t = ride.t
@@ -109,6 +112,7 @@ object Cells {
                 o2Sum[r][c] += ov.toDouble()
                 if (ov < LEAN_V) lean[r][c]++
                 injSum[r][c] += iv.toDouble()
+                dutySum[r][c] += iv.toDouble() * rpm[i] / 1200
                 val tv = ect?.get(i) ?: Float.NaN
                 if (!tv.isNaN()) { tN[r][c]++; tSum[r][c] += tv.toDouble() }
             }
@@ -116,7 +120,7 @@ object Cells {
         val avg = { s: Array<DoubleArray> -> Array(rows) { r -> DoubleArray(cols) { c -> if (n[r][c] > 0) s[r][c] / n[r][c] else Double.NaN } } }
         return Hits(seconds, n, avg(o2Sum),
             Array(rows) { r -> DoubleArray(cols) { c -> if (n[r][c] > 0) 100.0 * lean[r][c] / n[r][c] else Double.NaN } },
-            avg(injSum),
+            avg(injSum), avg(dutySum),
             Array(rows) { r -> DoubleArray(cols) { c -> if (tN[r][c] > 0) tSum[r][c] / tN[r][c] else Double.NaN } })
     }
 }

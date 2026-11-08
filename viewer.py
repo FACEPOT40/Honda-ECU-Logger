@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog, 
 
 import cells
 import theme
-from decode import FIELDS, fmt_value
+from decode import DUTY_ALERT, FIELDS, fmt_value
 from recorder import default_log_dir
 
 KEYS = [f[0] for f in FIELDS]
@@ -29,12 +29,12 @@ INFO = {k: (lbl, unit, dec) for k, lbl, unit, dec in FIELDS}
 COLORS = {
     "rpm": "#4fc3f7", "tps_pct": "#ffb74d", "ect_c": "#ef5350",
     "batt_v": "#9ccc65", "speed_kmh": "#ba68c8", "gps_kmh": "#7986cb", "inj_ms": "#4db6ac",
-    "ign_deg": "#fff176", "o2_v": "#f06292", "stft": "#e0e0e0",
+    "ign_deg": "#fff176", "o2_v": "#f06292", "stft": "#e0e0e0", "inj_duty": "#26c6da",
     "mode_d14": "#90a4ae", "neutral": "#a1887f",
 }
 PRESETS = {
     "Overview (RPM, TPS, ignition)": ["rpm", "tps_pct", "ign_deg"],
-    "Fuel (O2, STFT, injector)": ["rpm", "tps_pct", "o2_v", "stft", "inj_ms"],
+    "Fuel (O2, STFT, injector)": ["rpm", "tps_pct", "o2_v", "stft", "inj_ms", "inj_duty"],
     "Ignition (advance)": ["rpm", "tps_pct", "ign_deg"],
     "Health (temp, battery)": ["rpm", "ect_c", "batt_v"],
     "Everything": KEYS,
@@ -82,7 +82,11 @@ def load_csv(path):
                 markers.append((ts, row["marker"].strip()))
     if not t:
         raise ValueError("No data rows with a valid timestamp were found in this file.")
-    return np.array(t), {k: np.array(cols[k], dtype=float) for k in present}, markers
+    data = {k: np.array(cols[k], dtype=float) for k in present}
+    if "inj_ms" in data and "rpm" in data:      # worked out, not stored: so old logs have it too
+        with np.errstate(invalid="ignore"):
+            data["inj_duty"] = np.where(data["rpm"] > 0, data["inj_ms"] * data["rpm"] / 1200, np.nan)
+    return np.array(t), data, markers
 
 
 class LogViewer(QMainWindow):
@@ -486,6 +490,7 @@ class CellHitsWindow(QWidget):
         "Average O2 (V)": ("o2", "{:.2f}"),
         "Lean share (% of samples below 0.45 V)": ("lean_pct", "{:.0f}"),
         "Average injector (ms)": ("inj", "{:.2f}"),
+        "Average injector duty (%)": ("duty", "{:.0f}"),
         "Average engine temp (°C), of the O2 samples": ("ect", "{:.0f}"),
         "Samples used for O2 and injector": ("n", "{:.0f}"),
     }
@@ -527,7 +532,7 @@ class CellHitsWindow(QWidget):
         legend = QLabel(
             "Rows = RPM, columns = TPS %, the same axes as the fuel and ignition maps in TunerPro. "
             "Each moment counts in its nearest cell. O2 colors: blue = lean side (below 0.45 V), "
-            "orange / red = rich. Engine temp colors: blue = still warming up (below 100 °C), orange / red = hot. "
+            "orange / red = rich. Engine temp colors: blue = still warming up (below 100 °C), orange / red = hot. Injector duty: red at 85 % or more. "
             "Faded cells in italics = fewer than 5 samples, not reliable. "
             "Zoom or move the graphs to look at part of the ride; the cursor's cell is selected.")
         legend.setWordWrap(True)
@@ -575,6 +580,8 @@ class CellHitsWindow(QWidget):
             return _blend("#4f8ff7", x / 100)
         if key == "ect":           # warming up blue, warm neutral, hot orange to red
             return cell_temp_color(x)
+        if key == "duty":          # teal by how busy the injector is, red at the alert limit
+            return QColor(theme.RED) if x >= DUTY_ALERT else _blend("#26c6da", 0.15 + 0.85 * x / DUTY_ALERT)
         return _blend({"seconds": "#26a69a", "inj": "#4db6ac", "n": "#9e9e9e"}[key], 0.15 + 0.85 * x / top)
 
     @staticmethod
@@ -582,7 +589,7 @@ class CellHitsWindow(QWidget):
         lines = [cells.cell_name(r, c), f"{h['seconds'][r, c]:.1f} s running"]
         if h["n"][r, c]:
             lines += [f"O2 {h['o2'][r, c]:.2f} V average, {h['lean_pct'][r, c]:.0f} % of samples lean",
-                      f"Injector {h['inj'][r, c]:.2f} ms average"]
+                      f"Injector {h['inj'][r, c]:.2f} ms average, duty {h['duty'][r, c]:.0f} %"]
             if np.isfinite(h["ect"][r, c]):
                 lines.append(f"Engine temp {h['ect'][r, c]:.0f} °C average")
             lines.append(f"{h['n'][r, c]:.0f} samples")

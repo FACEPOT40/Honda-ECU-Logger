@@ -18,7 +18,8 @@ object Alerts {
     val KEYS = Decode.FIELDS.map { it.key }.filter { it != "mode_d14" && it != "neutral" }
 
     /** Until the rider changes them: the same as the old fixed rules (and the PC). */
-    val DEFAULTS = mapOf("ect_c" to Limit(null, 120.0), "batt_v" to Limit(12.5, null))
+    val DEFAULTS = mapOf("ect_c" to Limit(null, 120.0), "batt_v" to Limit(12.5, null),
+        "inj_duty" to Limit(null, 85.0))    // injector near its limit, like decode.DUTY_ALERT
 
     /** The battery only counts above this RPM: at idle the charging system is low by design. */
     const val BATT_MIN_RPM = 1500.0
