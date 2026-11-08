@@ -66,7 +66,7 @@ Open a ride with **Open CSV**, by dropping a CSV onto the app, or with `python v
 - **Navigation:** mouse wheel zooms time and drag pans. Your last selection is remembered.
 
 ### Cell hits (map table)
-**Cell hits** lays the ride over the same RPM × TPS grid as the fuel and ignition maps in TunerPro. For each cell you can show the time spent there, the average O2, the lean share or the injector time.
+**Cell hits** lays the ride over the same RPM × TPS grid as the fuel and ignition maps in TunerPro. For each cell you can show the time spent there, the average O2, the lean share, the injector time or the **average engine temp**. The temperature tells you whether a lean cell was lean on a cold engine (still warming up) or a hot one.
 
 ![Cell hits](docs/images/pc-cell-hits.png)
 *Average O2 per map cell. Blue = lean side (below 0.45 V), orange / red = rich. Faded cells have too few samples to trust.*
@@ -146,7 +146,7 @@ A recorder for the phone on your handlebar. It uses the same FTDI cable and save
 </tr>
 </table>
 
-**Cells** is the phone version of the PC's cell hits table. It shows time, O2, lean %, injector time or sample count per map cell, with the same steady-throttle filter. Turn the phone sideways; pinch to zoom, double-tap a cell to zoom in, and tap a cell for its details.
+**Cells** is the phone version of the PC's cell hits table. It shows time, O2, lean %, injector time, engine temp or sample count per map cell, with the same steady-throttle filter. Turn the phone sideways; pinch to zoom, double-tap a cell to zoom in, and tap a cell for its details.
 
 ![Cell table on the phone](docs/images/android-cells.jpg)
 

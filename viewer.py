@@ -468,6 +468,15 @@ def _blend(color, f):
                   int(b.blue() + (c.blue() - b.blue()) * f))
 
 
+COLD_C = 100   # cell temp colors: bluer the further below this (warming up), redder above
+def cell_temp_color(x):
+    """Engine temp shading for the cell table (same as CellGridView.kt): blue = still warming
+    up (stronger the colder, from 60 °C), orange / red = hot (strongest at 130 °C)."""
+    if x < COLD_C:
+        return _blend("#4f8ff7", 0.2 + 0.8 * (COLD_C - x) / 40)
+    return _blend("#ff7043", 0.2 + 0.8 * (x - COLD_C) / 30)
+
+
 class CellHitsWindow(QWidget):
     """Per map cell (RPM rows × TPS columns, like TunerPro): time, O2, injector, for the time
     range in view in the viewer. Follows the viewer's zoom and highlights the cursor's cell."""
@@ -477,6 +486,7 @@ class CellHitsWindow(QWidget):
         "Average O2 (V)": ("o2", "{:.2f}"),
         "Lean share (% of samples below 0.45 V)": ("lean_pct", "{:.0f}"),
         "Average injector (ms)": ("inj", "{:.2f}"),
+        "Average engine temp (°C), of the O2 samples": ("ect", "{:.0f}"),
         "Samples used for O2 and injector": ("n", "{:.0f}"),
     }
     MIN_SAMPLES = 5
@@ -517,7 +527,8 @@ class CellHitsWindow(QWidget):
         legend = QLabel(
             "Rows = RPM, columns = TPS %, the same axes as the fuel and ignition maps in TunerPro. "
             "Each moment counts in its nearest cell. O2 colors: blue = lean side (below 0.45 V), "
-            "orange / red = rich. Faded cells in italics = fewer than 5 samples, not reliable. "
+            "orange / red = rich. Engine temp colors: blue = still warming up (below 100 °C), orange / red = hot. "
+            "Faded cells in italics = fewer than 5 samples, not reliable. "
             "Zoom or move the graphs to look at part of the ride; the cursor's cell is selected.")
         legend.setWordWrap(True)
         legend.setStyleSheet(f"color:{theme.MUTED}")
@@ -562,6 +573,8 @@ class CellHitsWindow(QWidget):
                 else _blend("#ff7043", (x - cells.LEAN_V) / 0.5)
         if key == "lean_pct":
             return _blend("#4f8ff7", x / 100)
+        if key == "ect":           # warming up blue, warm neutral, hot orange to red
+            return cell_temp_color(x)
         return _blend({"seconds": "#26a69a", "inj": "#4db6ac", "n": "#9e9e9e"}[key], 0.15 + 0.85 * x / top)
 
     @staticmethod
@@ -569,7 +582,10 @@ class CellHitsWindow(QWidget):
         lines = [cells.cell_name(r, c), f"{h['seconds'][r, c]:.1f} s running"]
         if h["n"][r, c]:
             lines += [f"O2 {h['o2'][r, c]:.2f} V average, {h['lean_pct'][r, c]:.0f} % of samples lean",
-                      f"Injector {h['inj'][r, c]:.2f} ms average", f"{h['n'][r, c]:.0f} samples"]
+                      f"Injector {h['inj'][r, c]:.2f} ms average"]
+            if np.isfinite(h["ect"][r, c]):
+                lines.append(f"Engine temp {h['ect'][r, c]:.0f} °C average")
+            lines.append(f"{h['n'][r, c]:.0f} samples")
         return "\n".join(lines)
 
     def show_cursor(self, cell):

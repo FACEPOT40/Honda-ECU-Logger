@@ -72,7 +72,8 @@ object RideSummary {
                 .take(3)
             out += "Leanest cells" to if (leanest.isEmpty()) "none (no cell under ${Cells.LEAN_V} V with ${MIN_CELL_SECONDS.toInt()} s of data)"
                 else leanest.joinToString("\n") { (row, c) ->
-                    "${Cells.name(row, c)}: ${"%.2f".format(java.util.Locale.US, h.o2[row][c])} V, ${"%.1f".format(java.util.Locale.US, h.seconds[row][c])} s"
+                    "${Cells.name(row, c)}: ${"%.2f".format(java.util.Locale.US, h.o2[row][c])} V, ${"%.1f".format(java.util.Locale.US, h.seconds[row][c])} s" +
+                        (if (h.ect[row][c].isNaN()) "" else ", ${"%.0f".format(h.ect[row][c])} °C")
                 }
         }
         out += "Markers" to if (r.markers.isEmpty()) "none" else r.markers.joinToString(" · ") { it.second }

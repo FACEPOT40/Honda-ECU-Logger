@@ -66,7 +66,9 @@ object Cells {
     }
 
     class Hits(val seconds: Array<DoubleArray>, val n: Array<IntArray>, val o2: Array<DoubleArray>,
-               val leanPct: Array<DoubleArray>, val inj: Array<DoubleArray>) {
+               val leanPct: Array<DoubleArray>, val inj: Array<DoubleArray>,
+               /** Average engine temp of the same samples: lean when cold (warm-up) or hot. */
+               val ect: Array<DoubleArray>) {
         val totalSeconds get() = seconds.sumOf { it.sum() }
     }
 
@@ -74,6 +76,7 @@ object Cells {
      * Per-cell summary of the samples from [from] to [to].
      * seconds: time the engine ran in the cell (fuel cut included). n, o2, leanPct, inj: from
      * samples with fuel on and a warm O2 sensor, and only steady ones if [steadyMask] is given.
+     * ect: the average engine temp of those samples (where the log has one).
      */
     fun hits(ride: RideData, from: Long, to: Long, steadyMask: BooleanArray?): Hits {
         val rows = RPM_AXIS.size
@@ -83,11 +86,14 @@ object Cells {
         val o2Sum = Array(rows) { DoubleArray(cols) }
         val lean = Array(rows) { IntArray(cols) }
         val injSum = Array(rows) { DoubleArray(cols) }
+        val tN = Array(rows) { IntArray(cols) }
+        val tSum = Array(rows) { DoubleArray(cols) }
         val t = ride.t
         val rpm = ride.values("rpm")
         val tps = ride.values("tps_pct")
         val o2 = ride.values("o2_v")
         val inj = ride.values("inj_ms")
+        val ect = ride.values("ect_c")
         if (rpm != null && tps != null) {
             for (i in ride.indexRange(from, to)) {
                 val r = nearest(RPM_AXIS, rpm[i])
@@ -103,11 +109,14 @@ object Cells {
                 o2Sum[r][c] += ov.toDouble()
                 if (ov < LEAN_V) lean[r][c]++
                 injSum[r][c] += iv.toDouble()
+                val tv = ect?.get(i) ?: Float.NaN
+                if (!tv.isNaN()) { tN[r][c]++; tSum[r][c] += tv.toDouble() }
             }
         }
         val avg = { s: Array<DoubleArray> -> Array(rows) { r -> DoubleArray(cols) { c -> if (n[r][c] > 0) s[r][c] / n[r][c] else Double.NaN } } }
         return Hits(seconds, n, avg(o2Sum),
             Array(rows) { r -> DoubleArray(cols) { c -> if (n[r][c] > 0) 100.0 * lean[r][c] / n[r][c] else Double.NaN } },
-            avg(injSum))
+            avg(injSum),
+            Array(rows) { r -> DoubleArray(cols) { c -> if (tN[r][c] > 0) tSum[r][c] / tN[r][c] else Double.NaN } })
     }
 }

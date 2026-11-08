@@ -43,7 +43,7 @@ class CellsActivity : Activity() {
         // landscape, kept short so the grid gets the height: one line of title and legend, one row
         // of small controls, the grid, one line of details
         root.addView(uiText(12f, Look.GREY, "Cell hits  ·  ${clock.format(Date(from))} – ${clock.format(Date(to))}" +
-            "  ·  O2: blue = lean, orange/red = rich  ·  faint = under $MIN_SAMPLES samples" +
+            "  ·  O2: blue = lean, orange/red = rich  ·  Temp: blue = warming up, red = hot  ·  faint = under $MIN_SAMPLES samples" +
             "  ·  pinch or double-tap to zoom").apply {
             maxLines = 1
             ellipsize = TextUtils.TruncateAt.END
@@ -108,7 +108,8 @@ class CellsActivity : Activity() {
         val h = grid.hits ?: return
         val s = StringBuilder("${Cells.name(r, c)}: ${"%.1f".format(Locale.US, h.seconds[r][c])} s running")
         if (h.n[r][c] > 0) s.append("  ·  O2 ${"%.2f".format(Locale.US, h.o2[r][c])} V average, " +
-            "${"%.0f".format(h.leanPct[r][c])} % lean  ·  injector ${"%.2f".format(Locale.US, h.inj[r][c])} ms  ·  ${h.n[r][c]} samples")
+            "${"%.0f".format(h.leanPct[r][c])} % lean  ·  injector ${"%.2f".format(Locale.US, h.inj[r][c])} ms" +
+            (if (h.ect[r][c].isNaN()) "" else "  ·  engine ${"%.0f".format(h.ect[r][c])} °C") + "  ·  ${h.n[r][c]} samples")
         else s.append("  ·  no steady fuel-on samples here")
         details.text = s
     }

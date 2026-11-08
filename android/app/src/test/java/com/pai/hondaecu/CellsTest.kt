@@ -34,6 +34,18 @@ class CellsTest {
         assertEquals(0.5, h.o2[17][13], 1e-6)
         assertEquals(50.0, h.leanPct[17][13], 1e-9)
         assertEquals(0.8, h.totalSeconds, 1e-9)
+        assertTrue(h.ect[17][13].isNaN())                       // no ect_c column: no temp
+    }
+
+    @Test fun cellTempIsTheAverageOfTheO2Samples() {
+        val r = RideData.parse(sequenceOf("timestamp,rpm,tps_pct,o2_v,inj_ms,ect_c",
+            "2026-11-03 10:00:00.000,4250,16.4,0.10,4.8,90",
+            "2026-11-03 10:00:00.100,4250,16.4,0.20,4.8,100",
+            "2026-11-03 10:00:00.200,4250,16.4,0.30,0,130",     // fuel cut: not an O2 sample
+            "2026-11-03 10:00:00.300,4250,16.4,0.40,4.8,"))     // no temp in this sample
+        val h = Cells.hits(r, r.start, r.end, null)
+        assertEquals(3, h.n[17][13])
+        assertEquals(95.0, h.ect[17][13], 1e-9)
     }
 
     @Test fun steadyNeedsHalfASecondOfCalmThrottle() {
@@ -54,8 +66,8 @@ class CellsTest {
         val h = Cells.hits(r, r.start, r.end, steady)
         println("CELLS total_s=%.3f steady=%d".format(java.util.Locale.US, h.totalSeconds, steady.count { it }))
         for (row in h.n.indices) for (c in h.n[row].indices) if (h.seconds[row][c] > 0 || h.n[row][c] > 0) {
-            println("CELL %d %d %.3f %d %.4f %.2f %.4f".format(java.util.Locale.US, row, c,
-                h.seconds[row][c], h.n[row][c], h.o2[row][c], h.leanPct[row][c], h.inj[row][c]))
+            println("CELL %d %d %.3f %d %.4f %.2f %.4f %.3f".format(java.util.Locale.US, row, c,
+                h.seconds[row][c], h.n[row][c], h.o2[row][c], h.leanPct[row][c], h.inj[row][c], h.ect[row][c]))
         }
         for ((k, v) in RideSummary.lines(r, steady)) println("SUMMARY $k: ${v.replace("\n", " | ")}")
     }
